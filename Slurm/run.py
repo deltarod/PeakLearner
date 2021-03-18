@@ -29,7 +29,7 @@ def startNextTask():
         return False
 
     try:
-        query = {'command': 'nextTask'}
+        query = {"command": "nextTask", 'args': {}}
         r = requests.post(cfg.jobUrl, json=query)
     except requests.exceptions.ConnectionError:
         return False
@@ -38,6 +38,8 @@ def startNextTask():
         raise Exception(r.status_code)
 
     task = r.json()
+
+    print(task)
 
     query = {'command': 'update',
              'args': {'id': task['id'], 'task': {'taskId': task['taskId'], 'status': 'Queued'}}}

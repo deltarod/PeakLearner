@@ -36,7 +36,7 @@ The PeakLearner + Jbrowse webserver should now be started, and can be access at 
 For use in deployment, 
 
 ### Slurm Server
-1. `git clone https://github.com/deltarod/PeakLearner.git`
+1. `git clone https://github.com/PeakLearner/PeakLearner.git`
 2. `cd PeakLearner/`
 3. `mkdir bin`
 4. `cd bin/`
@@ -48,6 +48,12 @@ For use in deployment,
 10. `python3 run.py` - This will generate the intial config
 11. Setup PeakLearnerSlurm.cfg, for more information see the [configuration section](#configuration)
 
+
+## Using Podman
+1. `git clone https://github.com/PeakLearner/PeakLearner.git`
+2. `cd PeakLearner/`
+3. `podman build -t pl .`
+4. `podman run --name PeakLearner -dp [Output Port]:8080 -v /dir/to/data/:/build/PeakLearner/jbrowse/jbrowse/data/ pl`
 
 ## Configuration
 This section will explain some of the configuration of the different systems

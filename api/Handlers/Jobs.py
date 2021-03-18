@@ -1,6 +1,8 @@
 from api.util import PLdb as db
 from api.Handlers.Handler import Handler
 from api.Handlers import Models
+import logging
+log = logging.getLogger(__name__)
 
 
 statuses = ['New', 'Queued', 'Processing', 'Done', 'Error']
@@ -73,9 +75,9 @@ class Job(metaclass=JobType):
             try:
                 self.trackUrl = hubInfo['tracks'][track]['url']
             except TypeError:
-                print(hubInfo)
-                print(db.HubInfo.db_key_tuples())
-                print(user, track)
+                log.debug(hubInfo)
+                log.debug(db.HubInfo.db_key_tuples())
+                log.debug(user, track)
                 txn.commit()
                 raise Exception
             txn.commit()
@@ -259,6 +261,7 @@ class Job(metaclass=JobType):
         task['track'] = self.track
         task['problem'] = self.problem
         task['iteration'] = self.iteration
+        task['jobStatus'] = self.status
         task['id'] = self.id
         task['trackUrl'] = self.trackUrl
 
@@ -450,7 +453,6 @@ def getJobWithHighestPriority():
         return
 
     for job in jobs:
-
         if job.status.lower() == 'new':
             if jobWithTask is None:
                 jobWithTask = job

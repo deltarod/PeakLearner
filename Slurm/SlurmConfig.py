@@ -43,7 +43,11 @@ if save:
     with open(configFile, 'w') as cfg:
         config.write(cfg)
 
-remoteServer = "%s:%s/" % (config['remoteServer']['url'], config['remoteServer']['port'])
+port = int(config['remoteServer']['port'])
+if port == 80:
+    remoteServer = "%s/" % config['remoteServer']['url']
+else:
+    remoteServer = "%s:%s/" % (config['remoteServer']['url'], config['remoteServer']['port'])
 useSlurm = config['general']['useSlurm'].lower() == 'true'
 useCron = config['general']['useCron'].lower() == 'true'
 debug = config['general']['debug'].lower() == 'true'

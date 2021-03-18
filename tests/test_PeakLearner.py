@@ -18,16 +18,18 @@ class PeakLearnerTests(unittest.TestCase):
     labelURL = '%slabels/' % trackURL
     modelsUrl = '%smodels/' % trackURL
     jobsURL = '/jobs/'
-    rangeArgs = {'ref': 'chr1', 'start': 0, 'end': 120000000}
+    rangeArgs = {'ref': 'chr1', 'start': 0, 'end': 120000000, 'label': 'peakStart'}
     startLabel = rangeArgs.copy()
     startLabel['start'] = 15250059
     startLabel['end'] = 15251519
     endLabel = startLabel.copy()
     endLabel['start'] = 15251599
     endLabel['end'] = 15252959
+    endLabel['label'] = 'peakEnd'
     noPeakLabel = startLabel.copy()
     noPeakLabel['start'] = 16089959
     noPeakLabel['end'] = 16091959
+    noPeakLabel['label'] = 'noPeak'
 
     def setUp(self):
         self.config = testing.setUp()
@@ -123,19 +125,7 @@ class PeakLearnerTests(unittest.TestCase):
         assert serverLabel['ref'] == self.startLabel['ref']
         assert serverLabel['start'] == self.startLabel['start']
         assert serverLabel['end'] == self.startLabel['end']
-        assert serverLabel['label'] == 'unknown'
-
-        # Update Label
-
-        updateLabel = self.startLabel.copy()
-
-        updateLabel['label'] = 'peakStart'
-
-        query = {'command': 'update', 'args': updateLabel}
-
-        request = self.testapp.post_json(self.labelURL, query)
-
-        assert request.status_code == 200
+        assert serverLabel['label'] == 'peakStart'
 
         query = {'command': 'get', 'args': self.rangeArgs}
         request = self.testapp.post_json(self.labelURL, query)
@@ -232,7 +222,7 @@ class PeakLearnerTests(unittest.TestCase):
 
         # Make change that can be checked after restore
         updateAnother = self.endLabel.copy()
-        updateAnother['label'] = 'peakEnd'
+        updateAnother['label'] = 'peakStart'
         query = {'command': 'update', 'args': updateAnother}
         request = self.testapp.post_json(self.labelURL, query)
 
@@ -247,7 +237,7 @@ class PeakLearnerTests(unittest.TestCase):
 
         assert len(labels) == 1
 
-        assert labels[0]['label'] == 'peakEnd'
+        assert labels[0]['label'] == 'peakStart'
 
         request = self.testapp.get(restoreUrl)
         assert request.status_code == 200
@@ -261,7 +251,7 @@ class PeakLearnerTests(unittest.TestCase):
 
         assert len(labels) == 1
 
-        assert labels[0]['label'] == 'unknown'
+        assert labels[0]['label'] == 'peakEnd'
 
         query = {'command': 'remove', 'args': updateAnother}
         request = self.testapp.post_json(self.labelURL, query)
