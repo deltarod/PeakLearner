@@ -211,7 +211,7 @@ def runTask():
                  'args': {'id': task['id'],
                           'task': {'taskId': task['taskId'],
                                    'status': 'Done',
-                                   'totalTime': totalTime}}}
+                                   'totalTime': str(totalTime)}}}
         try:
             r = requests.post(cfg.jobUrl, json=query)
         except requests.exceptions.ConnectionError:
@@ -226,7 +226,7 @@ def runTask():
              'args': {'id': task['id'],
                       'task': {'taskId': task['taskId'],
                                'status': 'Error',
-                               'totalTime': totalTime}}}
+                               'totalTime': str(totalTime)}}}
     try:
         r = requests.post(cfg.jobUrl, json=query)
     except requests.exceptions.ConnectionError:
