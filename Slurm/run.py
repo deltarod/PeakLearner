@@ -12,7 +12,6 @@ else:
 
 
 def startNextTask():
-
     if not os.path.exists(cfg.dataPath):
         os.makedirs(cfg.dataPath)
     try:
@@ -22,7 +21,7 @@ def startNextTask():
         return False
 
     if not r.status_code == 200:
-        raise Exception(r.status_code)
+        return False
 
     # If no new jobs to process, return false and sleep
     if not r.json():
@@ -42,6 +41,7 @@ def createSlurmTask():
     jobString += '#SBATCH --job-name=%s\n' % jobName
     jobString += '#SBATCH --output=%s\n' % os.path.join(os.getcwd(), cfg.dataPath, jobName + '.txt')
     jobString += '#SBATCH --chdir=%s\n' % os.getcwd()
+    jobString += '#SBATCH --open-mode=append'
 
     # TODO: Make resource allocation better
     jobString += '#SBATCH --time=%s:00\n' % cfg.maxJobLen

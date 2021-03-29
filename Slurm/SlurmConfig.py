@@ -36,7 +36,7 @@ if 'slurm' not in configSections:
 
 if 'cron' not in configSections:
     config.add_section('cron')
-    config['cron']['timeToRun'] = '60'
+    config['cron']['timeToRun'] = '3600'
 
 # If a section was missing, save that to the config
 if save:

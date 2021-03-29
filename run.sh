@@ -1,2 +1,2 @@
-pserve production.ini &
-#python3 Prediction/run.py
+#python3 Prediction/run.py &
+pserve production.ini
