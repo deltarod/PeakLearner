@@ -170,7 +170,7 @@ def fixAndSaveCoverage(interval, outputPath, problem):
 
 def runTask():
     try:
-        query = {'command': 'nextTask'}
+        query = {'command': 'processNextQueuedTask'}
         r = requests.post(cfg.jobUrl, json=query)
     except requests.exceptions.ConnectionError:
         return False
@@ -179,6 +179,8 @@ def runTask():
         raise Exception(r.status_code)
 
     task = r.json()
+
+    print(task)
 
     trackUrl = '%s%s/%s/%s/' % (cfg.remoteServer, task['user'], task['hub'], task['track'])
 

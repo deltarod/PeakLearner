@@ -27,6 +27,12 @@ def startNextTask():
     if not r.json():
         return False
 
+    try:
+        query = {'command': 'queueNextTask'}
+        r = requests.post(cfg.jobUrl, json=query, timeout=5)
+    except requests.exceptions.ConnectionError:
+        return False
+
     if cfg.useSlurm:
         createSlurmTask()
     else:

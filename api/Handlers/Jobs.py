@@ -30,7 +30,8 @@ class JobHandler(Handler):
                 'resetAll': resetAllJobs,
                 'restartJob': restartJob,
                 'restartAllJobs': restartAllJobs,
-                'nextTask': getNextNewTask,
+                'queueNextTask': queueNextTask,
+                'processNextQueuedTask': processNextQueuedTask,
                 'check': checkNewTask,
                 'dlJobs': addDownloadJobs}
 
@@ -209,9 +210,9 @@ class Job(metaclass=JobType):
         if self.status.lower() == 'done':
             times = []
             for task in self.tasks.values():
-                times.append(task['totalTime'])
+                times.append(float(task['totalTime']))
 
-            self.time = sum(times)
+            self.time = str(sum(times))
 
     def getPriority(self):
         """Eventually will calculate the priority of the job"""
@@ -549,7 +550,43 @@ def getJob(data):
     return output
 
 
-def getNextNewTask(data):
+def processNextQueuedTask(data):
+    # Get highest priority queued job
+    job = getJobWithHighestPriority(jobType='queued')
+
+    if job is None:
+        return
+
+    txn = db.getTxn()
+    jobDb = db.Job(job.id)
+    txnJob = jobDb.get(txn=txn, write=True)
+
+    taskToProcess = None
+
+    for key in txnJob.tasks.keys():
+        task = txnJob.tasks[key]
+
+        if task['status'].lower() == 'queued':
+            taskToProcess = task
+            break
+
+    if taskToProcess is None:
+        return
+
+    taskToProcess['status'] = 'Processing'
+
+    txnJob.updateJobStatus()
+
+    jobDb.put(txnJob, txn=txn)
+
+    task = txnJob.addJobInfoOnTask(taskToProcess)
+
+    txn.commit()
+
+    return task
+
+
+def queueNextTask(data):
     job = getJobWithHighestPriority()
 
     if job is None:
@@ -568,7 +605,7 @@ def getNextNewTask(data):
 
     taskToUpdate = txnJob.tasks[key]
 
-    taskToUpdate['status'] = 'Processing'
+    taskToUpdate['status'] = 'Queued'
 
     txnJob.updateJobStatus()
 
@@ -581,7 +618,7 @@ def getNextNewTask(data):
     return task
 
 
-def getJobWithHighestPriority():
+def getJobWithHighestPriority(jobType='new'):
     jobWithTask = None
 
     jobs = db.Job.all()
@@ -590,7 +627,7 @@ def getJobWithHighestPriority():
         return
 
     for job in jobs:
-        if job.status.lower() == 'new':
+        if job.status.lower() == jobType:
             if jobWithTask is None:
                 jobWithTask = job
 
