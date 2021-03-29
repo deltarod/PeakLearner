@@ -28,44 +28,16 @@ def startNextTask():
     if not r.json():
         return False
 
-    try:
-        query = {'command': 'nextTask'}
-        r = requests.post(cfg.jobUrl, json=query)
-    except requests.exceptions.ConnectionError:
-        return False
-
-    if not r.status_code == 200:
-        raise Exception(r.status_code)
-
-    task = r.json()
-
-    query = {'command': 'update',
-             'args': {'id': task['id'], 'task': {'taskId': task['taskId'], 'status': 'Queued'}}}
-
-    try:
-        r = requests.post(cfg.jobUrl, json=query)
-    except requests.exceptions.ConnectionError:
-        return False
-
-    if not r.status_code == 200:
-        raise Exception(r.status_code)
-
-    queuedTask = r.json()
-
-    if queuedTask['sameStatusUpdate']:
-        print('task already queued', queuedTask)
-        return False
-
     if cfg.useSlurm:
-        createSlurmTask(queuedTask)
+        createSlurmTask()
     else:
-        tasks.runTask(queuedTask['id'], queuedTask['taskId'])
+        tasks.runTask()
 
     return True
 
 
-def createSlurmTask(task):
-    jobName = 'PeakLearner-%s-%s' % (task['id'], task['taskId'])
+def createSlurmTask():
+    jobName = 'PeakLearner'
     jobString = '#!/bin/bash\n'
     jobString += '#SBATCH --job-name=%s\n' % jobName
     jobString += '#SBATCH --output=%s\n' % os.path.join(os.getcwd(), cfg.dataPath, jobName + '.txt')
@@ -80,7 +52,7 @@ def createSlurmTask(task):
         jobString += 'module load R\n'
         jobString += 'conda activate %s\n' % cfg.condaVenvPath
 
-    jobString += 'srun python3 %s %s %s\n' % ('Slurm/Tasks.py', task['id'], task['taskId'])
+    jobString += 'srun python3 Slurm/Tasks.py'
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.sh') as temp:
         temp.write(jobString)

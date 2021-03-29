@@ -1,9 +1,10 @@
+import pandas as pd
 from api.util import PLdb as db
 from api.Handlers.Handler import Handler
 from api.Handlers import Models
 import logging
-log = logging.getLogger(__name__)
 
+log = logging.getLogger(__name__)
 
 statuses = ['New', 'Queued', 'Processing', 'Done', 'Error']
 
@@ -16,7 +17,7 @@ class JobHandler(Handler):
         args = {}
         if 'args' in data:
             args = data['args']
-            
+
         return funcToRun(args)
 
     @classmethod
@@ -30,7 +31,8 @@ class JobHandler(Handler):
                 'restartJob': restartJob,
                 'restartAllJobs': restartAllJobs,
                 'nextTask': getNextNewTask,
-                'check': checkNewTask}
+                'check': checkNewTask,
+                'dlJobs': addDownloadJobs}
 
 
 class JobType(type):
@@ -56,6 +58,8 @@ class JobType(type):
 
 class Job(metaclass=JobType):
     """Class for storing job information"""
+
+    jobType = 'job'
 
     def __init__(self, user, hub, track, problem, trackUrl=None, tasks=None):
         self.user = user
@@ -146,6 +150,9 @@ class Job(metaclass=JobType):
         if self.problem != jobToCheck.problem:
             return False
 
+        if self.jobType != jobToCheck.jobType:
+            return False
+
         return True
 
     # TODO: Time prediction for job
@@ -178,7 +185,7 @@ class Job(metaclass=JobType):
             taskToUpdate[key] = task[key]
 
         self.updateJobStatus(taskToUpdate)
-            
+
         return self.addJobInfoOnTask(taskToUpdate)
 
     def updateJobStatus(self, task=None):
@@ -293,9 +300,9 @@ class PredictJob(Job):
     jobType = 'predict'
 
     def __init__(self, user, hub, track, problem):
-        super().__init__(user, hub, track, problem, tasks={'0', createFeatureTask(0)})
+        super().__init__(user, hub, track, problem, tasks={'0': createFeatureTask(0)})
 
-    def updateJobStatus(self, task):
+    def updateJobStatus(self, task=None):
         if task['taskId'] == '0':
             if task['status'] == 'Done':
                 # Get Predicition Penalty
@@ -361,9 +368,113 @@ def updateTask(data):
     jobDb.put(jobToUpdate, txn=txn)
     txn.commit()
 
-    if jobToUpdate.status == 'Done':
+    if jobToUpdate.status.lower() == 'done':
         checkForMoreJobs(task)
+        if checkIfRunDownloadJobs():
+            addDownloadJobs()
     return task
+
+
+def addDownloadJobs(*args):
+    # Check tracks for where a prediction needs to be made
+    currentProblems = None
+
+    for keys in db.HubInfo.db_key_tuples():
+        user, hub = keys
+        hubInfoDb = db.HubInfo(*keys)
+        txn = db.getTxn()
+        hubInfo = hubInfoDb.get(txn=txn, write=True)
+
+        if 'complete' in hubInfo:
+            txn.commit()
+            continue
+
+        problems = db.Problems(hubInfo['genome']).get()
+
+        currentTrackProblems = pd.DataFrame()
+
+        for track, value in hubInfo['tracks'].items():
+
+            output = problems.apply(checkForModels, axis=1, args=(user, hub, track))
+
+            # If there is a model for every region, don't consider this for download jobs
+            if output['models'].all():
+                continue
+
+            output['track'] = track
+
+            currentTrackProblems = currentTrackProblems.append(output, ignore_index=True)
+
+
+        if currentTrackProblems.empty:
+            txn.commit()
+            continue
+
+        noModels = currentTrackProblems[currentTrackProblems['models'] == False]
+
+        # If no current problems, mark track as complete so it doesn't have to search the problems
+        if len(noModels.index) == 0:
+            hubInfo['complete'] = True
+            hubInfoDb.put(hubInfo, txn=txn)
+            txn.commit()
+            continue
+
+        txn.commit()
+
+        numLabels = currentTrackProblems['numLabels'].sum()
+
+        hubProblemsInfo = {'user': user,
+                           'hub': hub,
+                           'numLabels': numLabels,
+                           'problems': currentTrackProblems}
+
+        if currentProblems is None:
+            currentProblems = hubProblemsInfo
+            continue
+
+        # Run download job on hub with most labels
+        else:
+            if currentProblems['numLabels'] < hubProblemsInfo['numLabels']:
+                currentProblems = hubProblemsInfo
+
+    if currentProblems is not None:
+        submitDownloadJobs(currentProblems)
+
+
+def submitDownloadJobs(problems):
+    currentProblems = problems['problems']
+
+    toCreateJobs = currentProblems[currentProblems['models'] == False]
+
+    toCreateJobs.apply(submitPredictJobForDownload, axis=1, args=(problems['user'], problems['hub']))
+
+
+def submitPredictJobForDownload(row, user, hub):
+    problem = {'chrom': row['chrom'],
+               'chromStart': row['chromStart'],
+               'chromEnd': row['chromEnd']}
+
+    track = row['track']
+
+    job = PredictJob(user, hub, track, problem)
+
+    job.putNewJob()
+
+
+def checkForModels(row, user, hub, track):
+    chrom = row['chrom']
+    start = row['chromStart']
+    end = row['chromEnd']
+
+    ms = db.ModelSummaries(user, hub, track, chrom, start).get()
+
+    row['models'] = not ms.empty
+
+    labels = db.Labels(user, hub, track, chrom).getInBounds(chrom, start, end)
+
+    row['numLabels'] = len(labels.index)
+
+    return row
 
 
 def checkForMoreJobs(task):
@@ -376,6 +487,16 @@ def checkForMoreJobs(task):
                                   problem['chromStart']).get(txn=txn, write=True)
     Models.checkGenerateModels(modelSums, problem, task, txn=txn)
     txn.commit()
+
+
+def checkIfRunDownloadJobs():
+    for keys in db.Job.db_key_tuples():
+        jobDb = db.Job(*keys)
+        currentJob = jobDb.get()
+
+        if currentJob.status.lower() != 'done':
+            return False
+    return True
 
 
 def resetJob(data):
@@ -434,14 +555,30 @@ def getNextNewTask(data):
     if job is None:
         return
 
-    taskToRun = getNextTaskInJob(job)
+    taskToRun, key = getNextTaskInJob(job)
 
-    if taskToRun is None:
-        raise Exception(job.__dict__())
+    # Re get the job to obtain write lock
+    txn = db.getTxn()
+    jobDb = db.Job(job.id)
+    txnJob = jobDb.get(txn=txn, write=True)
 
-    taskToRun['id'] = job.id
+    if txnJob.tasks != job.tasks:
+        txn.commit()
+        raise Exception(txnJob.__dict__(), job.__dict__())
 
-    return taskToRun
+    taskToUpdate = txnJob.tasks[key]
+
+    taskToUpdate['status'] = 'Processing'
+
+    txnJob.updateJobStatus()
+
+    jobDb.put(txnJob, txn=txn)
+
+    task = txnJob.addJobInfoOnTask(taskToUpdate)
+
+    txn.commit()
+
+    return task
 
 
 def getJobWithHighestPriority():
@@ -469,9 +606,9 @@ def getNextTaskInJob(job):
         task = tasks[key]
 
         if task['status'].lower() == 'new':
-            return task
+            return task, key
 
-    return None
+    return None, None
 
 
 def checkNewTask(data):
@@ -525,7 +662,7 @@ def stats():
     if len(times) == 0:
         avgTime = 0
     else:
-        avgTime = sum(times)/len(times)
+        avgTime = sum(times) / len(times)
 
     output = {'numJobs': numJobs,
               'newJobs': newJobs,

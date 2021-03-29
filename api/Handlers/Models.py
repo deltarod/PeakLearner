@@ -12,7 +12,7 @@ jbrowseModelColumns = ["ref", "start", "end", "type", "score"]
 
 
 class ModelHandler(Handler.TrackHandler):
-    """Handles Label Commands"""
+    """Handles model Commands"""
     key = 'models'
 
     def do_POST(self, data):

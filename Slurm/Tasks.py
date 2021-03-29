@@ -168,12 +168,12 @@ def fixAndSaveCoverage(interval, outputPath, problem):
     return outputPath
 
 
-def runTask(jobId, taskId):
-    query = {'command': 'update', 'args': {'id': jobId, 'task': {'taskId': taskId, 'status': 'Processing'}}}
+def runTask():
     try:
+        query = {'command': 'nextTask'}
         r = requests.post(cfg.jobUrl, json=query)
     except requests.exceptions.ConnectionError:
-        raise Exception(query)
+        return False
 
     if not r.status_code == 200:
         raise Exception(r.status_code)
@@ -182,7 +182,7 @@ def runTask(jobId, taskId):
 
     trackUrl = '%s%s/%s/%s/' % (cfg.remoteServer, task['user'], task['hub'], task['track'])
 
-    dataPath = os.path.join(cfg.dataPath, 'PeakLearner-%s-%s' % (jobId, taskId))
+    dataPath = os.path.join(cfg.dataPath, 'PeakLearner-%s-%s' % (task['id'], task['taskId']))
 
     if not os.path.exists(dataPath):
         try:
@@ -208,7 +208,10 @@ def runTask(jobId, taskId):
 
     if status:
         query = {'command': 'update',
-                 'args': {'id': jobId, 'task': {'taskId': taskId, 'status': 'Done', 'totalTime': totalTime}}}
+                 'args': {'id': task['id'],
+                          'task': {'taskId': task['taskId'],
+                                   'status': 'Done',
+                                   'totalTime': totalTime}}}
         try:
             r = requests.post(cfg.jobUrl, json=query)
         except requests.exceptions.ConnectionError:
@@ -220,7 +223,10 @@ def runTask(jobId, taskId):
         return True
 
     query = {'command': 'update',
-             'args': {'id': jobId, 'task': {'taskId': taskId, 'status': 'Error', 'totalTime': totalTime}}}
+             'args': {'id': task['id'],
+                      'task': {'taskId': task['taskId'],
+                               'status': 'Error',
+                               'totalTime': totalTime}}}
     try:
         r = requests.post(cfg.jobUrl, json=query)
     except requests.exceptions.ConnectionError:
@@ -238,5 +244,4 @@ def getTaskFunc(task):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        runTask(sys.argv[1], sys.argv[2])
+    runTask()

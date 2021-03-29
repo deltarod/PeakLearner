@@ -173,7 +173,7 @@ class ModelSummaries(db.PandasDf):
 
 
 class Features(db.Resource):
-    keys = ("user", "hub", "track", "chrom", "problemstart")
+    keys = ("user", "hub", "track", "chrom", "chromStart")
 
     def make_details(self):
         return {}

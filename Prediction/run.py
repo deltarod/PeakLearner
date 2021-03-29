@@ -122,7 +122,9 @@ def dropBadCols(df):
 
 def learn(X, Y):
     cvfit = cvglmnet(x=X.to_numpy().copy(), y=Y.to_numpy().copy())
-    db.Prediction('model').put(cvfit)
+    txn = db.getTxn()
+    db.Prediction('model').put(cvfit, txn=txn)
+    txn.commit()
 
 
 # Taken from the glmnet_python library, added a return to it so it can be saved
