@@ -16,8 +16,8 @@ def startNextTask():
         os.makedirs(cfg.dataPath)
     try:
         query = {'command': 'check'}
-        r = requests.post(cfg.jobUrl, json=query, timeout=5)
-    except requests.exceptions.ConnectionError:
+        r = requests.post(cfg.jobUrl, json=query, timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         return False
 
     if not r.status_code == 200:
@@ -29,8 +29,8 @@ def startNextTask():
 
     try:
         query = {'command': 'queueNextTask'}
-        r = requests.post(cfg.jobUrl, json=query, timeout=5)
-    except requests.exceptions.ConnectionError:
+        r = requests.post(cfg.jobUrl, json=query, timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         return False
 
     if cfg.useSlurm:
