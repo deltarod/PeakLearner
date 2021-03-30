@@ -576,6 +576,7 @@ def processNextQueuedTask(data):
     if taskToProcess is None:
         print('task is none')
         print(txnJob.tasks)
+        txn.commit()
         return
 
     taskToProcess['status'] = 'Processing'
@@ -587,9 +588,6 @@ def processNextQueuedTask(data):
     txn.commit()
 
     task = txnJob.addJobInfoOnTask(taskToProcess)
-
-    if task is None:
-        print(txnJob.__dict__())
 
     print('process queued task', task)
 
@@ -641,10 +639,14 @@ def queueNextTask(data):
     txn = db.getTxn()
     jobDb = db.Job(job.id)
     txnJob = jobDb.get(txn=txn, write=True)
+    try:
 
-    if txnJob.tasks != job.tasks:
-        txn.commit()
-        raise Exception(txnJob.__dict__(), job.__dict__())
+        if txnJob.tasks != job.tasks:
+            txn.abort()
+            raise Exception(txnJob.__dict__(), job.__dict__())
+    except ValueError:
+        print('txnJob', txnJob.tasks)
+        print('job', job.tasks)
 
     taskToUpdate = txnJob.tasks[key]
 

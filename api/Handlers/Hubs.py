@@ -56,8 +56,6 @@ def goToRegion(data, query):
         'end': regionToGoTo['chromEnd']
     }
 
-    print(region)
-
     return region
 
 
@@ -91,8 +89,6 @@ def checkLabels(row, user, hub, problem, toCheck):
             return False
         else:
             return True
-
-
 
 
 def createTrackListWithHubInfo(info):
@@ -402,7 +398,7 @@ def generateProblemTrack(path):
 
         command = os.path.join(cfg.jbrowsePath, 'bin', 'flatfile-to-json.pl')
 
-        generateTrack = '%s --bed %s --out %s --trackLabel Problems' % (command, path, trackFolder)
+        generateTrack = '%s --bed %s --out %s --trackLabel Contigs' % (command, path, trackFolder)
 
         # Will generate a jbrowse track using the problems.bed flatfile
         os.system(generateTrack)
