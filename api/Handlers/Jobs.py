@@ -552,7 +552,9 @@ def getJob(data):
 
 def processNextQueuedTask(data):
     # Get highest priority queued job
-    job = getJobWithHighestPriority(jobType='queued')
+    print('processNextTask')
+    job = getHighestPriorityQueuedJob()
+    print(job)
 
     if job is None:
         print('job is none')
@@ -582,11 +584,49 @@ def processNextQueuedTask(data):
 
     jobDb.put(txnJob, txn=txn)
 
-    task = txnJob.addJobInfoOnTask(taskToProcess)
-
     txn.commit()
 
+    task = txnJob.addJobInfoOnTask(taskToProcess)
+
+    if task is None:
+        print(txnJob.__dict__())
+
+    print('process queued task', task)
+
     return task
+
+
+def getHighestPriorityQueuedJob():
+    jobWithTask = None
+
+    jobs = db.Job.all()
+
+    lowerStatus = [status.lower() for status in statuses]
+    queuedIndex = lowerStatus.index('queued')
+
+    if len(jobs) < 1:
+        return
+
+    for job in jobs:
+        jobIndex = lowerStatus.index(job.status.lower())
+        # If job is new or queued
+        if jobIndex <= queuedIndex:
+            hasQueue = False
+
+            # Check to see that job has a queued task
+            for key in job.tasks.keys():
+                task = job.tasks[key]
+                if task['status'].lower() == 'queued':
+                    hasQueue = True
+
+            if hasQueue:
+                if jobWithTask is None:
+                    jobWithTask = job
+
+                elif jobWithTask.getPriority() < job.getPriority():
+                    jobWithTask = job
+
+    return jobWithTask
 
 
 def queueNextTask(data):
@@ -614,14 +654,14 @@ def queueNextTask(data):
 
     jobDb.put(txnJob, txn=txn)
 
-    task = txnJob.addJobInfoOnTask(taskToUpdate)
-
     txn.commit()
+
+    task = txnJob.addJobInfoOnTask(taskToUpdate)
 
     return task
 
 
-def getJobWithHighestPriority(jobType='new'):
+def getJobWithHighestPriority():
     jobWithTask = None
 
     jobs = db.Job.all()
@@ -630,7 +670,7 @@ def getJobWithHighestPriority(jobType='new'):
         return
 
     for job in jobs:
-        if job.status.lower() == jobType:
+        if job.status.lower() == 'new':
             if jobWithTask is None:
                 jobWithTask = job
 
@@ -713,7 +753,3 @@ def stats():
               'avgTime': avgTime}
 
     return output
-
-
-def printTxn(txn):
-    print('txnId', txn.id())
