@@ -555,6 +555,7 @@ def processNextQueuedTask(data):
     job = getJobWithHighestPriority(jobType='queued')
 
     if job is None:
+        print('job is none')
         return
 
     txn = db.getTxn()
@@ -571,6 +572,8 @@ def processNextQueuedTask(data):
             break
 
     if taskToProcess is None:
+        print('task is none')
+        print(txnJob.tasks)
         return
 
     taskToProcess['status'] = 'Processing'
@@ -694,12 +697,12 @@ def stats():
 
             for task in job.tasks.values():
                 if task['status'].lower() == 'done':
-                    times.append(task['totalTime'])
+                    times.append(float(task['totalTime']))
 
     if len(times) == 0:
         avgTime = 0
     else:
-        avgTime = sum(times) / len(times)
+        avgTime = str(sum(times) / len(times))
 
     output = {'numJobs': numJobs,
               'newJobs': newJobs,
