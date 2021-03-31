@@ -64,8 +64,6 @@ def feature(task, dataPath, coveragePath, trackUrl):
 
 
 def sendSegments(segmentsFile, task, trackUrl):
-    strPenalty = str(task['penalty'])
-
     modelData = pd.read_csv(segmentsFile, sep='\t', header=None)
     modelData.columns = ['chrom', 'start', 'end', 'annotation', 'mean']
     sortedModel = modelData.sort_values('start', ignore_index=True)
@@ -79,12 +77,12 @@ def sendSegments(segmentsFile, task, trackUrl):
     modelUrl = '%smodels/' % trackUrl
 
     query = {'command': 'put',
-             'args': {'modelInfo': modelInfo, 'penalty': strPenalty, 'modelData': sortedModel.to_json()}}
+             'args': {'modelInfo': modelInfo, 'penalty': task['penalty'], 'modelData': sortedModel.to_json()}}
 
     r = requests.post(modelUrl, json=query)
 
     if r.status_code == 200:
-        print('model successfully sent with penalty', strPenalty, 'and with modelInfo:\n', modelInfo, '\n')
+        print('model successfully sent with penalty', task['penalty'], 'and with modelInfo:\n', modelInfo, '\n')
         return True
 
     return False

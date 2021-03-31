@@ -217,6 +217,8 @@ def submitOOMJob(problem, data, penalty, jobType, txn=None):
         print("Invalid OOM Job")
         return
 
+    print('oomjobpen', type(penalty), penalty)
+
     job = Jobs.SingleModelJob(data['user'],
                               data['hub'],
                               data['track'],
