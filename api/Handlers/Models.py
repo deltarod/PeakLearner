@@ -9,6 +9,7 @@ from api.Handlers import Jobs, Tracks, Handler
 summaryColumns = ['regions', 'fp', 'possible_fp', 'fn', 'possible_fn', 'errors']
 modelColumns = ['chrom', 'chromStart', 'chromEnd', 'annotation', 'height']
 jbrowseModelColumns = ["ref", "start", "end", "type", "score"]
+pd.set_option('mode.chained_assignment', None)
 
 
 class ModelHandler(Handler.TrackHandler):
@@ -237,7 +238,6 @@ def submitPregenJob(problem, data, txn=None):
                          problem,
                          penalties)
 
-    print('pregen before put')
     job.putNewJobWithTxn(txn=txn)
 
 
@@ -278,6 +278,8 @@ def submitSearch(data, problem, bottom, top, txn=None):
                       top['penalty']).get()
 
     penalty = abs((topLoss['meanLoss'] - bottomLoss['meanLoss']) / (bottomLoss['peaks'] - topLoss['peaks']))
+
+    print('submitSearch', penalty, type(penalty))
 
     job = Jobs.SingleModelJob(data['user'],
                               data['hub'],

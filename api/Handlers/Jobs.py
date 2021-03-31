@@ -169,7 +169,9 @@ class Job(metaclass=JobType):
         taskToUpdate = None
         for key in self.tasks.keys():
             taskToUpdate = self.tasks[key]
-            if taskToUpdate['taskId'] == task['taskId']:
+            updateId = int(taskToUpdate['taskId'])
+            taskId = int(task['taskId'])
+            if updateId == taskId:
                 break
 
         if taskToUpdate is None:
@@ -696,7 +698,6 @@ def getNextTaskInJob(job):
 
 def checkNewTask(data):
     """Checks through all the jobs to see if any of them are new"""
-    print('check')
     jobs = db.Job.all()
     for job in jobs:
         if job.status.lower() == 'new':

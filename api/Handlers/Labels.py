@@ -24,14 +24,28 @@ class LabelHandler(Handler.TrackHandler):
 
 
 def addLabel(data):
-    # Duplicated because calls from updateLabel are causing freezing
+    print('addLabel')
     newLabel = pd.Series({'chrom': data['ref'],
                           'chromStart': data['start'],
                           'chromEnd': data['end'],
                           'annotation': data['label']})
 
     txn = db.getTxn()
-    item, labels = db.Labels(data['user'], data['hub'], data['track'], data['ref']).add(newLabel, txn=txn)
+    labelsDb = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
+    labels = labelsDb.get(txn=txn, write=True)
+    if not labels.empty:
+        print('not empty')
+        inBounds = labels.apply(db.checkInBounds, axis=1, args=(data['ref'], data['start'], data['end']))
+        # If there are any labels currently stored within the region which the new label is being added
+        if inBounds.any():
+            txn.commit()
+            return False
+
+    labels = labels.append(newLabel, ignore_index=True).sort_values('chromStart', ignore_index=True)
+
+    print(labels)
+
+    labelsDb.put(labels, txn=txn)
     db.Prediction('changes').increment(txn=txn)
     Models.updateAllModelLabels(data, labels)
     txn.commit()

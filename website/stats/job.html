@@ -1,0 +1,73 @@
+{% extends "../templates/base.jinja2" %}
+
+{% block inner_head %}
+    <title>Job {{id}} Stats</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script type="text/javascript">
+
+        function refreshCallback(data, status){
+            location.reload();
+        }
+
+        function resetJob(id) {
+            let url = '/jobs/'
+            let query = {'command': 'resetJob', 'args': {'jobId': id}}
+
+            sendAjax(url, query, refreshCallback)
+        }
+
+        function restartAllJobs(test)
+        {
+            let url = '/jobs/'
+            let query = {'command': 'restartAllJobs'}
+
+            sendAjax(url, query, refreshCallback)
+        }
+
+        function resetTask(id, taskId)
+        {
+            let url = '/jobs/'
+            let query = {'command': 'update', 'args': {'id': id, 'task': {'taskId': taskId, 'status': 'New'}}}
+            sendAjax(url, query, refreshCallback)
+        }
+
+        function doRestore(){
+
+        }
+    </script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid d-flex flex-column flex-grow h-100">
+    <h1>PeakLearner Job {{id}} Stats</h1>
+    <div class="row">
+        <div class="col">
+            <p>Hub user for job: {{user}}</p>
+            <p>Hub name for job: {{hub}}</p>
+            <p>Track name for job: {{track}}</p>
+            <p>Job Problem: {{problem}}</p>
+            <button type="button" class="btn btn-light" onclick="resetJob({{id}})">Reset Job</button>
+        </div>
+    </div>
+
+    <h2>Tasks</h2>
+    <div class="row">
+        {% for task in tasks %}
+        <div class="col-sm-3" id="{{id}}">
+            {# looping over a dict will give the dicts keys so get value of dict at key and set as task #}
+            {% set task = tasks[task] %}
+            <h3>Task: {{task['taskId']}}</h3>
+            <p>{{task}}</p>
+            <p>Task status: {{task['status']}}</p>
+            <p>Task Type: {{task['type']}}</p>
+            {% if task['type'] == 'model' %}
+            <p>Model penalty: {{task['penalty']}}</p>
+            {% endif %}
+            <button type="button" class="btn btn-light" onclick="resetTask({{id}}, {{task['taskId']}})">Reset Task</button>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}

@@ -52,14 +52,22 @@ def modelStats(request):
 
 
 @view_config(route_name='labelStats', renderer='stats/labels.html')
-def modelStats(request):
+def labelStats(request):
     numLabeledChroms, numLabels = Labels.stats()
 
     return {'numLabeledChroms': numLabeledChroms,
             'numLabels': numLabels}
 
 
-@view_config(route_name='jobStats', renderer='stats/jobs.html')
-def jobStats(request):
+@view_config(route_name='jobsStats', renderer='stats/jobs.html')
+def jobsStats(request):
     return Jobs.stats()
+
+@view_config(route_name='jobStats', renderer='stats/job.html')
+def jobStats(request):
+    id = request.matchdict['id']
+
+    job = db.Job(id).get()
+
+    return job.__dict__()
 
