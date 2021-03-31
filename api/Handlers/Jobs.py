@@ -216,7 +216,12 @@ class Job(metaclass=JobType):
 
     def getPriority(self):
         """Eventually will calculate the priority of the job"""
-        return 0
+
+        # Priority based on number of labels
+        labelsDb = db.Labels(self.user, self.hub, self.track, self.problem['chrom'])
+        inProblem = labelsDb.getInBounds(self.problem['chrom'], self.problem['chromStart'], self.problem['chromEnd'])
+        # Add one so the priority is always above predict jobs
+        return len(inProblem.index) + 1
 
     def resetJob(self):
         self.status = 'New'
@@ -280,8 +285,8 @@ def createModelTask(taskId, penalty):
     output = {
         'status': 'New',
         'type': 'model',
-        'taskId': taskId,
-        'penalty': penalty
+        'taskId': str(taskId),
+        'penalty': str(penalty)
     }
 
     return output
@@ -311,6 +316,10 @@ class PredictJob(Job):
                 print()
 
         Job.updateJobStatus(self, task)
+
+    def getPriority(self):
+        # Predict jobs should be low priority as they should only be ran when no other types of jobs are running
+        return 0
 
 
 class SingleModelJob(Job):
@@ -405,7 +414,6 @@ def addDownloadJobs(*args):
             output['track'] = track
 
             currentTrackProblems = currentTrackProblems.append(output, ignore_index=True)
-
 
         if currentTrackProblems.empty:
             txn.commit()
@@ -552,12 +560,9 @@ def getJob(data):
 
 def processNextQueuedTask(data):
     # Get highest priority queued job
-    print('processNextTask')
     job = getHighestPriorityQueuedJob()
-    print(job)
 
     if job is None:
-        print('job is none')
         return
 
     txn = db.getTxn()
@@ -574,8 +579,6 @@ def processNextQueuedTask(data):
             break
 
     if taskToProcess is None:
-        print('task is none')
-        print(txnJob.tasks)
         txn.commit()
         return
 
@@ -588,9 +591,6 @@ def processNextQueuedTask(data):
     txn.commit()
 
     task = txnJob.addJobInfoOnTask(taskToProcess)
-
-    print('process queued task', task)
-
     return task
 
 
@@ -640,13 +640,14 @@ def queueNextTask(data):
     jobDb = db.Job(job.id)
     txnJob = jobDb.get(txn=txn, write=True)
     try:
-
         if txnJob.tasks != job.tasks:
             txn.abort()
             raise Exception(txnJob.__dict__(), job.__dict__())
     except ValueError:
         print('txnJob', txnJob.tasks)
         print('job', job.tasks)
+        print('txnDict', txnJob.__dict__())
+        print('jobDict', job.__dict__())
 
     taskToUpdate = txnJob.tasks[key]
 
