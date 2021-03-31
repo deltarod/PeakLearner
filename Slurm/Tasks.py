@@ -16,8 +16,8 @@ genFeaturesPath = os.path.join('Slurm', 'GenerateFeatures.R')
 
 
 def model(task, dataPath, coveragePath, trackUrl):
-    segmentsPath = '%s_penalty=%f_segments.bed' % (coveragePath, task['penalty'])
-    lossPath = '%s_penalty=%f_loss.tsv' % (coveragePath, task['penalty'])
+    segmentsPath = '%s_penalty=%s_segments.bed' % (coveragePath, task['penalty'])
+    lossPath = '%s_penalty=%s_loss.tsv' % (coveragePath, task['penalty'])
 
     PeakSegDisk.FPOP_files(coveragePath, segmentsPath, lossPath, str(task['penalty']))
 
