@@ -97,22 +97,27 @@ def whichModelToDisplay(data, problem, summary):
 
     outputDf = pd.DataFrame([summary.iloc[toDisplayIndex]])
 
-    return outputDf
+    return outputDfgit
 
 
 def updateAllModelLabels(data, labels):
     # This is the problems that the label update is in
-    txn = db.getTxn()
+
     problems = Tracks.getProblems(data)
 
     for problem in problems:
+        txn = db.getTxn()
+
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
                                            problem['chromStart'])
 
         modelsums = modelSummaries.get(txn=txn, write=True)
 
         if len(modelsums.index) < 1:
+            txn.abort()
+            txn = db.getTxn()
             submitPregenJob(problem, data, txn=txn)
+            txn.commit()
             continue
 
         newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
@@ -121,7 +126,7 @@ def updateAllModelLabels(data, labels):
 
         checkGenerateModels(newSum, problem, data, txn=txn)
 
-    txn.commit()
+        txn.commit()
 
 
 def modelSumLabelUpdate(modelSum, labels, data, problem, txn):
@@ -389,6 +394,8 @@ def getLOPARTPenalty(data):
 
 
 def generateLOPARTModel(data, problem):
+    if not data['useLopart']:
+        return []
     user = data['user']
     hub = data['hub']
     track = data['track']
