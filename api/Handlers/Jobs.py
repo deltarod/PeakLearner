@@ -178,18 +178,11 @@ class Job(metaclass=JobType):
             raise Exception
 
         for key in task.keys():
-            if key == 'status':
-                # If something has already been queued for example
-                if taskToUpdate[key] == task[key]:
-                    taskToUpdate['sameStatusUpdate'] = True
-                else:
-                    taskToUpdate['sameStatusUpdate'] = False
-
             taskToUpdate[key] = task[key]
 
         self.updateJobStatus(taskToUpdate)
 
-        return self.addJobInfoOnTask(taskToUpdate)
+        return taskToUpdate
 
     def updateJobStatus(self, task=None):
         """Update current job status to the min of the task statuses"""
@@ -330,6 +323,7 @@ class SingleModelJob(Job):
     def __init__(self, user, hub, track, problem, penalty):
         super().__init__(user, hub, track, problem)
         taskId = str(len(self.tasks.keys()))
+        log.debug('Single Model Job created', penalty, type(penalty))
         self.tasks[taskId] = createModelTask(taskId, penalty)
 
 
@@ -379,6 +373,8 @@ def updateTask(data):
     task = jobToUpdate.updateTask(task)
     jobDb.put(jobToUpdate, txn=txn)
     txn.commit()
+
+    task = jobToUpdate.addJobInfoOnTask(task)
 
     if jobToUpdate.status.lower() == 'done':
         checkForMoreJobs(task)

@@ -17,14 +17,6 @@
             sendAjax(url, query, refreshCallback)
         }
 
-        function restartAllJobs(test)
-        {
-            let url = '/jobs/'
-            let query = {'command': 'restartAllJobs'}
-
-            sendAjax(url, query, refreshCallback)
-        }
-
         function resetTask(id, taskId)
         {
             let url = '/jobs/'
@@ -47,6 +39,10 @@
             <p>Hub name for job: {{hub}}</p>
             <p>Track name for job: {{track}}</p>
             <p>Job Problem: {{problem}}</p>
+            <p>Job Status: {{status}}</p>
+            <p>Job Type: {{jobType}}</p>
+            <p>Job ID: {{id}}</p>
+            <p>Job Iteration: {{iteration}}</p>
             <button type="button" class="btn btn-light" onclick="resetJob({{id}})">Reset Job</button>
         </div>
     </div>
@@ -58,11 +54,14 @@
             {# looping over a dict will give the dicts keys so get value of dict at key and set as task #}
             {% set task = tasks[task] %}
             <h3>Task: {{task['taskId']}}</h3>
-            <p>{{task}}</p>
             <p>Task status: {{task['status']}}</p>
             <p>Task Type: {{task['type']}}</p>
             {% if task['type'] == 'model' %}
             <p>Model penalty: {{task['penalty']}}</p>
+            {% endif %}
+
+            {% if task['status'] == 'Done' %}
+            <p>Task Time: {{task['totalTime']}}</p>
             {% endif %}
             <button type="button" class="btn btn-light" onclick="resetTask({{id}}, {{task['taskId']}})">Reset Task</button>
         </div>

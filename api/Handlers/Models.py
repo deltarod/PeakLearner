@@ -2,6 +2,8 @@ import PeakError
 import LOPART
 import pandas as pd
 import numpy as np
+import logging
+log = logging.getLogger(__name__)
 from glmnet_python import cvglmnetPredict
 from api.util import PLConfig as pl, PLdb as db, bigWigUtil as bw
 from api.Handlers import Jobs, Tracks, Handler
@@ -218,8 +220,6 @@ def submitOOMJob(problem, data, penalty, jobType, txn=None):
         print("Invalid OOM Job")
         return
 
-    print('oomjobpen', type(penalty), penalty)
-
     job = Jobs.SingleModelJob(data['user'],
                               data['hub'],
                               data['track'],
@@ -277,7 +277,8 @@ def submitSearch(data, problem, bottom, top, txn=None):
                       problem['chromStart'],
                       top['penalty']).get()
 
-    penalty = abs((topLoss['meanLoss'] - bottomLoss['meanLoss']) / (bottomLoss['peaks'] - topLoss['peaks']))
+    penalty = abs((topLoss['meanLoss'] - bottomLoss['meanLoss'])
+                  / (bottomLoss['peaks'] - topLoss['peaks'])).iloc[0].astype(float)
 
     print('submitSearch', penalty, type(penalty))
 
