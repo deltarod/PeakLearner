@@ -180,11 +180,11 @@ class Job(metaclass=JobType):
         for key in task.keys():
             taskToUpdate[key] = task[key]
 
-        self.updateJobStatus(taskToUpdate)
+        self.updateJobStatus()
 
         return taskToUpdate
 
-    def updateJobStatus(self, task=None):
+    def updateJobStatus(self):
         """Update current job status to the min of the task statuses"""
         # A status outside the bounds
         minStatusVal = len(statuses)
@@ -303,14 +303,26 @@ class PredictJob(Job):
     def __init__(self, user, hub, track, problem):
         super().__init__(user, hub, track, problem, tasks={'0': createFeatureTask(0)})
 
-    def updateJobStatus(self, task=None):
-        if task['taskId'] == '0':
-            if task['status'] == 'Done':
-                # Get Predicition Penalty
-                # Submit SingleModelJob with penalty
-                print()
+    def updateJobStatus(self):
+        keys = self.tasks.keys()
 
-        Job.updateJobStatus(self, task)
+        # When initially created, these only have the predict job
+        if len(keys) == 1:
+            prediction = Models.doPrediction(self.__dict__(), self.problem)
+
+            newTask = {'type': 'model'}
+
+            # If no prediction, Set job as error
+            if prediction is None or prediction is False:
+                newTask['status'] = 'Error'
+                newTask['penalty'] = 'Unknown'
+            else:
+                newTask['status'] = 'New'
+                newTask['penalty'] = str(prediction)
+
+            self.tasks['1'] = newTask
+
+        Job.updateJobStatus(self)
 
     def getPriority(self):
         # Predict jobs should be low priority as they should only be ran when no other types of jobs are running

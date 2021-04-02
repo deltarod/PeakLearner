@@ -24,7 +24,6 @@ class LabelHandler(Handler.TrackHandler):
 
 
 def addLabel(data):
-    print('addLabel')
     newLabel = pd.Series({'chrom': data['ref'],
                           'chromStart': data['start'],
                           'chromEnd': data['end'],

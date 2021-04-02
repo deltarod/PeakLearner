@@ -97,7 +97,7 @@ def whichModelToDisplay(data, problem, summary):
 
     outputDf = pd.DataFrame([summary.iloc[toDisplayIndex]])
 
-    return outputDfgit
+    return outputDf
 
 
 def updateAllModelLabels(data, labels):
@@ -308,6 +308,7 @@ def putModel(data):
 
     txn = db.getTxn()
     db.Model(user, hub, track, problem['chrom'], problem['chromStart'], penalty).put(modelData, txn=txn)
+    db.Prediction('changes').increment(txn=txn)
     labels = db.Labels(user, hub, track, problem['chrom']).get()
     errorSum = calculateModelLabelError(modelData, labels, problem, penalty)
     db.ModelSummaries(user, hub, track, problem['chrom'], problem['chromStart']).add(errorSum, txn=txn)

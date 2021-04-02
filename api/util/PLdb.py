@@ -1,5 +1,6 @@
 import os
 import json
+import atexit
 import pandas as pd
 import datetime
 import api.util.PLConfig as cfg
@@ -14,6 +15,9 @@ db.createEnvWithDir(dbPath)
 
 def close():
     db.close_db()
+
+
+atexit.register(close)
 
 
 def getTxn():

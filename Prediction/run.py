@@ -1,3 +1,4 @@
+print('prediction first line')
 import pandas as pd
 import numpy as np
 import scipy
@@ -195,4 +196,5 @@ def shutdown():
 
 
 if __name__ == '__main__':
+    print('prediction main start')
     runLearning()

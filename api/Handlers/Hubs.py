@@ -236,6 +236,14 @@ def saveLabelGroup(group, user, hub, track, genome, coverageUrl):
 
     txn = db.getTxn()
 
+    numLabels = len(group.index)
+
+    changes = db.Prediction('changes').get(write=True, txn=txn)
+
+    changes = changes + numLabels
+
+    db.Prediction('changes').put(changes, txn=txn)
+
     db.Labels(user, hub, track['track'], chrom).put(group, txn=txn)
 
     chromProblems = Tracks.getProblemsForChrom(genome, chrom, txn)
