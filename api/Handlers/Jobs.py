@@ -308,7 +308,11 @@ class PredictJob(Job):
 
         # When initially created, these only have the predict job
         if len(keys) == 1:
-            prediction = Models.doPrediction(self.__dict__(), self.problem)
+            try:
+                prediction = Models.doPrediction(self.__dict__(), self.problem)
+            except:
+                self.status = 'Error'
+                return
 
             newTask = {'type': 'model'}
 

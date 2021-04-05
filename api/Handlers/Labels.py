@@ -33,7 +33,6 @@ def addLabel(data):
     labelsDb = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
     labels = labelsDb.get(txn=txn, write=True)
     if not labels.empty:
-        print('not empty')
         inBounds = labels.apply(db.checkInBounds, axis=1, args=(data['ref'], data['start'], data['end']))
         # If there are any labels currently stored within the region which the new label is being added
         if inBounds.any():

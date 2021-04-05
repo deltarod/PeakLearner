@@ -33,6 +33,7 @@ def startNextTask():
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         return False
 
+    if cfg.useM
     if cfg.useSlurm:
         createSlurmTask()
     else:
@@ -86,3 +87,15 @@ if __name__ == '__main__':
         endTime = time.time()
 
         print("Start Time:", startTime, "End Time", endTime)
+
+
+def runTest()
+
+
+configs = {'test': runTest()}
+
+
+def configuration():
+
+
+
