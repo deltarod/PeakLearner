@@ -1,0 +1,5 @@
+pybbi==0.3.0
+pandas==1.1.4
+requests==2.23.0
+numpy
+git+git://github.com/deltarod/PeakSegDisk

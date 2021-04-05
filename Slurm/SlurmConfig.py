@@ -14,6 +14,7 @@ if 'general' not in configSections:
     config.add_section('general')
     config['general']['configuration'] = 'test'
     config['general']['debug'] = 'False'
+    config['general']['useSlurm'] = 'False'
 
 # Setup a default config if doesn't exist
 if 'remoteServer' not in configSections:
@@ -45,6 +46,7 @@ if port == 80:
     remoteServer = "%s/" % config['remoteServer']['url']
 else:
     remoteServer = "%s:%s/" % (config['remoteServer']['url'], config['remoteServer']['port'])
+configuration = config['general']['configuration'].lower()
 debug = config['general']['debug'].lower() == 'true'
 dataPath = config['slurm']['dataPath']
 maxJobLen = int(config['slurm']['maxJobLen'])

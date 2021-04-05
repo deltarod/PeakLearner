@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import time
 import tempfile
@@ -14,27 +15,8 @@ else:
 def startNextTask():
     if not os.path.exists(cfg.dataPath):
         os.makedirs(cfg.dataPath)
-    try:
-        query = {'command': 'check'}
-        r = requests.post(cfg.jobUrl, json=query, timeout=10)
-    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-        return False
 
-    if not r.status_code == 200:
-        return False
 
-    # If no new jobs to process, return false and sleep
-    if not r.json():
-        return False
-
-    try:
-        query = {'command': 'queueNextTask'}
-        r = requests.post(cfg.jobUrl, json=query, timeout=10)
-    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-        return False
-
-    if cfg.useM
-    if cfg.useSlurm:
         createSlurmTask()
     else:
         tasks.runTask()
@@ -71,31 +53,82 @@ def createSlurmTask():
         os.system(command)
 
 
+
+def runMonsoon():
+    if not checkNextTask():
+        print('No new task')
+        return
+
+    queueNextTask()
+
+    tasks.runTask()
+
+    startNextSlurmJob()
+
+
+def runTest():
+    if not checkNextTask():
+        print('No new task')
+        return
+
+    queueNextTask()
+
+    tasks.runTask()
+
+
+def checkNextTask():
+    try:
+        query = {'command': 'check'}
+        r = requests.post(cfg.jobUrl, json=query, timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+        return False
+
+    if not r.status_code == 200:
+        return False
+
+    # If no new jobs to process, return false and sleep
+    if not r.json():
+        return False
+
+    return True
+
+
+def queueNextTask():
+    try:
+        query = {'command': 'queueNextTask'}
+        r = requests.post(cfg.jobUrl, json=query, timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
+        return False
+
+    if not r.status_code == 200:
+        return False
+
+    return True
+
+
+def startNextSlurmJob():
+
+
+
+configs = {'test': runTest(),
+           'monsoon': runMonsoon()}
+
+
+def getConfig():
+    try:
+        return configs[cfg.configuration]
+    except KeyError:
+        print('Invalid config, defaulting to test config')
+        return runTest
+
+
 if __name__ == '__main__':
-    startTime = time.time()
 
-    if cfg.useCron:
-        timeDiff = lambda: time.time() - startTime
+    # For monsoon jobs, need to specify inputs
+    args = len(sys.argv) - 1
+    if args == 1:
+        arg = sys.argv[1]
+        if arg in configs.keys():
+            cfg.configuration = arg
 
-        while timeDiff() < cfg.timeToRun:
-            while startNextTask():
-                pass
-            time.sleep(1)
-    else:
-        startNextTask()
-
-        endTime = time.time()
-
-        print("Start Time:", startTime, "End Time", endTime)
-
-
-def runTest()
-
-
-configs = {'test': runTest()}
-
-
-def configuration():
-
-
-
+    getConfig()()

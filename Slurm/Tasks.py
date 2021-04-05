@@ -15,10 +15,6 @@ except ModuleNotFoundError:
 genFeaturesPath = os.path.join('Slurm', 'GenerateFeatures.R')
 
 
-class RequestException(Exception):
-    pass
-
-
 def model(task, dataPath, coveragePath, trackUrl):
     segmentsPath = '%s_penalty=%s_segments.bed' % (coveragePath, task['penalty'])
     lossPath = '%s_penalty=%s_loss.tsv' % (coveragePath, task['penalty'])
