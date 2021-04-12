@@ -1,8 +1,9 @@
+import bsddb3
+import logging
 import pandas as pd
+from api.Handlers import Models
 from api.util import PLdb as db
 from api.Handlers.Handler import Handler
-from api.Handlers import Models
-import logging
 
 log = logging.getLogger(__name__)
 
@@ -403,14 +404,21 @@ def addDownloadJobs(*args):
     # Check tracks for where a prediction needs to be made
     currentProblems = None
 
-    for keys in db.HubInfo.db_key_tuples():
-        user, hub = keys
-        hubInfoDb = db.HubInfo(*keys)
-        txn = db.getTxn()
-        hubInfo = hubInfoDb.get(txn=txn, write=True)
+    txn = db.getTxn()
+
+    cursor = db.HubInfo.getCursor(txn, bulk=True)
+
+    current = cursor.next(flags=bsddb3.db.DB_RMW)
+
+    while current is not None:
+        # If at end of list
+        if current is None:
+            break
+        key, hubInfo = current
+        user, hub = key
 
         if 'complete' in hubInfo:
-            txn.commit()
+            current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 
         problems = db.Problems(hubInfo['genome']).get()
@@ -430,19 +438,17 @@ def addDownloadJobs(*args):
             currentTrackProblems = currentTrackProblems.append(output, ignore_index=True)
 
         if currentTrackProblems.empty:
-            txn.commit()
+            current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 
-        noModels = currentTrackProblems[currentTrackProblems['models'] == False]
+        noModels = currentTrackProblems[not currentTrackProblems['models']]
 
         # If no current problems, mark track as complete so it doesn't have to search the problems
         if len(noModels.index) == 0:
             hubInfo['complete'] = True
-            hubInfoDb.put(hubInfo, txn=txn)
-            txn.commit()
+            cursor.put(hubInfo)
+            current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
-
-        txn.commit()
 
         numLabels = currentTrackProblems['numLabels'].sum()
 
@@ -453,6 +459,7 @@ def addDownloadJobs(*args):
 
         if currentProblems is None:
             currentProblems = hubProblemsInfo
+            current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 
         # Run download job on hub with most labels
@@ -460,14 +467,20 @@ def addDownloadJobs(*args):
             if currentProblems['numLabels'] < hubProblemsInfo['numLabels']:
                 currentProblems = hubProblemsInfo
 
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
+
     if currentProblems is not None:
         submitDownloadJobs(currentProblems)
+
+    cursor.close()
+
+    txn.commit()
 
 
 def submitDownloadJobs(problems):
     currentProblems = problems['problems']
 
-    toCreateJobs = currentProblems[currentProblems['models'] == False]
+    toCreateJobs = currentProblems[not currentProblems['models']]
 
     toCreateJobs.apply(submitPredictJobForDownload, axis=1, args=(problems['user'], problems['hub']))
 
@@ -513,6 +526,7 @@ def checkForMoreJobs(task):
 
 
 def checkIfRunDownloadJobs():
+    # This is okay as it never modifies the data afterwards
     for keys in db.Job.db_key_tuples():
         jobDb = db.Job(*keys)
         currentJob = jobDb.get()
@@ -536,13 +550,16 @@ def resetJob(data):
 
 def resetAllJobs(data):
     """Resets all jobs"""
-    for keys in db.Job.db_key_tuples():
-        txn = db.getTxn()
-        jobDb = db.Job(*keys)
-        jobToReset = jobDb.get(txn=txn)
-        jobToReset.resetJob()
-        jobDb.put(jobToReset, txn=txn)
-        txn.commit()
+    txn = db.getTxn()
+    cursor = db.Job.getCursor(txn=txn, bulk=True)
+    current = cursor.next(flags=bsddb3.db.DB_RMW)
+
+    while current is not None:
+        current.resetJob()
+        cursor.put(current)
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
+    cursor.close()
+    txn.commit()
 
 
 def restartJob(data):
@@ -550,43 +567,51 @@ def restartJob(data):
 
 
 def restartAllJobs(data):
-    for key in db.Job.db_key_tuples():
-        txn = db.getTxn()
+    txn = db.getTxn()
 
-        jobDb = db.Job(*key)
+    cursor = db.Job.getCursor(txn, bulk=True)
+    current = cursor.get(flags=bsddb3.db.DB_RMW | bsddb3.db.DB_NEXT)
 
-        job = jobDb.get(txn=txn, write=True)
+    while current is not None:
+        key, job = current
 
         restarted = job.restartUnfinished()
 
         if restarted:
-            jobDb.put(job, txn=txn)
-        txn.commit()
+            cursor.put(restarted)
+
+        current = cursor.get(flags=bsddb3.db.DB_RMW | bsddb3.db.DB_NEXT)
+
+    cursor.close()
+    txn.commit()
 
 
 def getJob(data):
     """Gets job by ID"""
-    txn = db.getTxn()
     output = db.Job(data['id']).get().__dict__()
-    txn.commit()
     return output
 
 
 def processNextQueuedTask(data):
+    print('processing next task')
+    txn = db.getTxn()
+
+    db.Job.syncDb()
+
+    cursor = db.Job.getCursor(txn=txn, bulk=True)
     # Get highest priority queued job
-    job = getHighestPriorityQueuedJob()
+
+    key, job = getHighestPriorityQueuedJob(cursor)
 
     if job is None:
-        return
-
-    txn = db.getTxn()
-    jobDb = db.Job(job.id)
-    txnJob = jobDb.get(txn=txn, write=True)
+        cursor.close()
+        txn.commit()
+        return {'Error': 'ProcessNextQueuedTask'}
 
     taskToProcess = None
 
-    for key in txnJob.tasks.keys():
-        task = txnJob.tasks[key]
+    for key in job.tasks.keys():
+        task = job.tasks[key]
 
         if task['status'].lower() == 'queued':
             taskToProcess = task
@@ -598,28 +623,31 @@ def processNextQueuedTask(data):
 
     taskToProcess['status'] = 'Processing'
 
-    txnJob.updateJobStatus()
+    job.updateJobStatus()
 
-    jobDb.put(txnJob, txn=txn)
+    cursor.putWithKey(key, job)
+
+    cursor.close()
 
     txn.commit()
 
-    task = txnJob.addJobInfoOnTask(taskToProcess)
+
+
+    task = job.addJobInfoOnTask(taskToProcess)
     return task
 
 
-def getHighestPriorityQueuedJob():
+def getHighestPriorityQueuedJob(cursor):
     jobWithTask = None
-
-    jobs = db.Job.all()
+    jobKey = None
 
     lowerStatus = [status.lower() for status in statuses]
     queuedIndex = lowerStatus.index('queued')
 
-    if len(jobs) < 1:
-        return
+    current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    for job in jobs:
+    while current is not None:
+        key, job = current
         jobIndex = lowerStatus.index(job.status.lower())
         # If job is new or queued
         if jobIndex <= queuedIndex:
@@ -632,69 +660,75 @@ def getHighestPriorityQueuedJob():
                     hasQueue = True
 
             if hasQueue:
+                print('has queue')
                 if jobWithTask is None:
                     jobWithTask = job
+                    jobKey = key
 
                 elif jobWithTask.getPriority() < job.getPriority():
                     jobWithTask = job
+                    jobKey = key
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    return jobWithTask
+    return jobKey, jobWithTask
 
 
 def queueNextTask(data):
-    job = getJobWithHighestPriority()
+    print('queueing next task')
+    txn = db.getTxn()
+
+    db.Job.syncDb()
+
+    cursor = db.Job.getCursor(txn=txn, bulk=True)
+
+    jobKey, job = getJobWithHighestPriority(cursor)
 
     if job is None:
         return
 
-    taskToRun, key = getNextTaskInJob(job)
-
     # Re get the job to obtain write lock
-    txn = db.getTxn()
-    jobDb = db.Job(job.id)
-    txnJob = jobDb.get(txn=txn, write=True)
-    try:
-        if txnJob.tasks != job.tasks:
-            txn.abort()
-            raise Exception(txnJob.__dict__(), job.__dict__())
-    except ValueError:
-        print('txnJob', txnJob.tasks)
-        print('job', job.tasks)
-        print('txnDict', txnJob.__dict__())
-        print('jobDict', job.__dict__())
+    key = getNextTaskInJob(job)
 
-    taskToUpdate = txnJob.tasks[key]
+    taskToUpdate = job.tasks[key]
 
     taskToUpdate['status'] = 'Queued'
 
-    txnJob.updateJobStatus()
+    job.updateJobStatus()
 
-    jobDb.put(txnJob, txn=txn)
+    cursor.putWithKey(key, job)
+
+    cursor.close()
 
     txn.commit()
 
-    task = txnJob.addJobInfoOnTask(taskToUpdate)
+    task = job.addJobInfoOnTask(taskToUpdate)
+
+    print('after queueing')
 
     return task
 
 
-def getJobWithHighestPriority():
+def getJobWithHighestPriority(cursor):
     jobWithTask = None
+    jobKey = None
 
-    jobs = db.Job.all()
+    current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    if len(jobs) < 1:
-        return
+    while current is not None:
+        key, job = current
 
-    for job in jobs:
         if job.status.lower() == 'new':
             if jobWithTask is None:
                 jobWithTask = job
+                jobKey = key
 
             elif jobWithTask.getPriority() < job.getPriority():
                 jobWithTask = job
+                jobKey = key
 
-    return jobWithTask
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
+
+    return jobKey, jobWithTask
 
 
 def getNextTaskInJob(job):
@@ -703,9 +737,9 @@ def getNextTaskInJob(job):
         task = tasks[key]
 
         if task['status'].lower() == 'new':
-            return task, key
+            return key
 
-    return None, None
+    return None
 
 
 def checkNewTask(data):

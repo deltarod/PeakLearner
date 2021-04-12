@@ -3,7 +3,6 @@
 #SBATCH --output=/home/tristan/Research/PeakLearner/runlog.txt
 #SBATCH --chdir=/home/tristan/Research/PeakLearner/
 #SBATCH --open-mode=append
-#SBATCH --array=1-5
 #SBATCH --ntasks=1
 #SBATCH --time=1:00:00
 

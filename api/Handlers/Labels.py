@@ -41,8 +41,6 @@ def addLabel(data):
 
     labels = labels.append(newLabel, ignore_index=True).sort_values('chromStart', ignore_index=True)
 
-    print(labels)
-
     labelsDb.put(labels, txn=txn)
     db.Prediction('changes').increment(txn=txn)
     Models.updateAllModelLabels(data, labels)

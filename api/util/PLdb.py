@@ -1,23 +1,27 @@
 import os
 import json
-import atexit
-import pandas as pd
+import bsddb3
+import uwsgi
+import uwsgidecorators
 import datetime
-import api.util.PLConfig as cfg
+import pandas as pd
 import simpleBDB as db
 from api.Handlers import Jobs
+import api.util.PLConfig as cfg
 
 
-dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
-
-db.createEnvWithDir(dbPath)
-
-
-def close():
-    db.close_db()
+def closeDBs():
+    db.close_dbs()
 
 
-atexit.register(close)
+uwsgi.atexit = closeDBs
+
+
+@uwsgidecorators.postfork
+def openDBs():
+    dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
+    db.createEnvWithDir(dbPath)
+    db.open_dbs()
 
 
 def getTxn():
@@ -93,7 +97,60 @@ class Job(db.Resource):
             if not isinstance(value, dict):
                 value = value.__dict__()
         db.Resource.put(self, value, txn=txn)
+
+    @classmethod
+    def getCursor(cls, txn=None, readCommited=False, bulk=False):
+        return JobCursor(db.DB.getCursor(cls, txn=txn, readCommited=readCommited, bulk=bulk))
+
     pass
+
+
+class JobCursor(db.Cursor):
+
+    def __init__(self, cursor):
+        # Call to super or error
+        super().__init__(cursor)
+        # Make parent classes cursor the current cursor for JobCursor
+        self.cursor = cursor.cursor
+
+    def get(self, flags=0):
+        out = db.Cursor.get(self, flags=flags)
+        if out is None:
+            return None
+        else:
+            key, value = out
+            return key, Jobs.Job.fromStorable(value)
+
+    def getWithKey(self, key, flags=bsddb3.db.DB_SET):
+        key, value = db.Cursor.getWithKey(self, key, flags=flags)
+
+        return key, Jobs.Job.fromStorable(value)
+
+    def put(self, value, flags=0):
+        if value is not None:
+            if not isinstance(value, dict):
+                value = value.__dict__()
+
+        db.Cursor.put(self, value, flags=flags)
+
+    def putWithKey(self, key, value, flags=bsddb3.db.DB_CURRENT):
+        if value is not None:
+            if not isinstance(value, dict):
+                value = value.__dict__()
+
+        db.Cursor.putWithKey(self, key, value, flags=flags)
+
+    def next(self, flags=0):
+        out = db.Cursor.next(self, flags=flags)
+
+        if out is None:
+            return None
+        else:
+            key, value = out
+            return key, Jobs.Job.fromStorable(value)
+
+    def dup(self, flags=bsddb3.db.DB_POSITION):
+        return db.Cursor.dup(self, flags=flags)
 
 
 class Labels(db.PandasDf):
@@ -333,7 +390,3 @@ def doRestoreWithSelected(backup):
         restore.doRestore(backupPath)
 
     return backup
-
-
-
-

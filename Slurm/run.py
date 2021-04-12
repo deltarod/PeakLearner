@@ -1,8 +1,7 @@
 import os
 import sys
-import requests
 import time
-import tempfile
+import requests
 
 if __name__ == '__main__':
     import Tasks as tasks
@@ -12,58 +11,18 @@ else:
     import Slurm.SlurmConfig as cfg
 
 
-def startNextTask():
-    if not os.path.exists(cfg.dataPath):
-        os.makedirs(cfg.dataPath)
-
-
-        createSlurmTask()
-    else:
-        tasks.runTask()
-
-    return True
-
-
-def createSlurmTask():
-    jobName = 'PeakLearner'
-    jobString = '#!/bin/bash\n'
-    jobString += '#SBATCH --job-name=%s\n' % jobName
-    jobString += '#SBATCH --output=%s\n' % os.path.join(os.getcwd(), cfg.dataPath, jobName + '.txt')
-    jobString += '#SBATCH --chdir=%s\n' % os.getcwd()
-    jobString += '#SBATCH --open-mode=append'
-
-    # TODO: Make resource allocation better
-    jobString += '#SBATCH --time=%s:00\n' % cfg.maxJobLen
-
-    if cfg.monsoon:
-        jobString += '#SBATCH --mem=1024\n'
-        jobString += 'module load anaconda3\n'
-        jobString += 'module load R\n'
-        jobString += 'conda activate %s\n' % cfg.condaVenvPath
-
-    jobString += 'srun python3 Slurm/Tasks.py'
-
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.sh') as temp:
-        temp.write(jobString)
-        temp.flush()
-        temp.seek(0)
-
-        command = 'sbatch %s' % temp.name
-
-        os.system(command)
-
-
-
 def runMonsoon():
     if not checkNextTask():
         print('No new task')
         return
 
-    queueNextTask()
+    if queueNextTask():
+        tasks.runTask()
+    else:
+        time.sleep(5)
 
-    tasks.runTask()
-
-    startNextSlurmJob()
+    if not cfg.debug:
+        startNextSlurmJob()
 
 
 def runTest():
@@ -107,11 +66,12 @@ def queueNextTask():
 
 
 def startNextSlurmJob():
+    scriptPath = os.path.join(os.getcwd(), cfg.slurmScript)
+    os.system(scriptPath)
 
 
-
-configs = {'test': runTest(),
-           'monsoon': runMonsoon()}
+configs = {'test': runTest,
+           'monsoon': runMonsoon}
 
 
 def getConfig():

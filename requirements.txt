@@ -3,12 +3,12 @@ pandas==1.1.4
 pyramid==1.10.5
 pyramid-jinja2==2.8
 requests==2.23.0
-simpleBDB==1.0.18
+uwsgi
 numpy
-waitress
 glmnet-py
 scipy
 matplotlib
+git+git://github.com/deltarod/simpleBDB
 git+git://github.com/deltarod/PeakError
 git+git://github.com/deltarod/PeakSegDisk
 git+git://github.com/deltarod/LOPART

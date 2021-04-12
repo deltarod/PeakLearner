@@ -18,8 +18,10 @@ genFeaturesPath = os.path.join('Slurm', 'GenerateFeatures.R')
 def model(task, dataPath, coveragePath, trackUrl):
     segmentsPath = '%s_penalty=%s_segments.bed' % (coveragePath, task['penalty'])
     lossPath = '%s_penalty=%s_loss.tsv' % (coveragePath, task['penalty'])
-
-    PeakSegDisk.FPOP_files(coveragePath, segmentsPath, lossPath, str(task['penalty']))
+    try:
+        PeakSegDisk.FPOP_files(coveragePath, segmentsPath, lossPath, str(task['penalty']))
+    except FileNotFoundError:
+        pass
 
     if os.path.exists(segmentsPath):
         if not sendSegments(segmentsPath, task, trackUrl):
@@ -177,6 +179,13 @@ def runTask():
         raise Exception(r.status_code)
 
     task = r.json()
+
+    print('task output\n', task, '\n')
+
+    if task is None:
+        print('None Task')
+        time.sleep(10)
+        return
 
     trackUrl = '%s%s/%s/%s/' % (cfg.remoteServer, task['user'], task['hub'], task['track'])
 
