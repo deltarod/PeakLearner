@@ -30,9 +30,8 @@ The Slurm Server should work with 3.6 and up but this is also untested.
 11. `cd jbrowse/jbrowse`
 12. `./setup.sh`
 13. `cd ..`
-14. `pserve development.ini`
-
-The PeakLearner + Jbrowse webserver should now be started, and can be access at 127.0.0.1:8081.
+14. `uwsgi wsgi.ini`
+The PeakLearner + Jbrowse webserver should now be started, and can be access at 127.0.0.1:8080.
 For use in deployment, 
 
 ### Slurm Server

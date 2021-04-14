@@ -76,15 +76,13 @@
           <p>These are the current labels which can be used with PeakLearner.
             <br>Peak Start is for when there is a single peak start inside the annotation.
             <br>Peak End is for when there is a single peak end inside the annotation.
-            <br>Peak is for when there are one or more peaks inside the annotation.
             <br>noPeak is for when there is supposed to be no peaks inside the annotation.</p>
           <br>
           <p>Once a label has been added, the system will generate a model to display. Below is the generated model given the above labels.</p>
           <img src="static/InitialModel.png" alt="An example of what the initial model would look like given the above labels">
-          <p>On the right of the noPeak Label, there is a peak that hasn't been identified by the model.
-            After Adding a peak label, the system now sees that as a peak, as well as adjusting the rest of the model to indentify similar peaks. Below is what that would look like.</p>
+          <p>On the left of the noPeak Label, there is a peak that hasn't been identified by the model.
+            After Adding a peakStart and a peakEnd label, the system now sees that as a peak, as well as adjusting the rest of the model to identify similar peaks. Below is what that would look like.</p>
           <img src="static/AdditionalLabel.png" alt="An example of what the model would look like after correcting it">
-          <p>In the above image, the peak on the left is now also being identified.</p>
 
 
         </div>
@@ -109,16 +107,14 @@
         <div class="carousel-item">
           <div class="tutorial-title">Labeling</div>
           <p>Labeling is intuitive with this configuration of Jbrowse.
-            To add a label, click the label button as shown in the below image</p>
+            To add a label, select the type of label, then click the highlight button</p>
+          <img src="static/LabelSelect.png" alt="An imagage depicting the dropdown menu to select a type of label"><br>
           <img src="static/HighlightButton.png" alt="An image depicting where the highlight button is on the page">
           <p>Then, click and drag from where you want one side of the label to be, to the other</p>
           <img src="static/StartOfLabel.png" alt="An image depicting the start of drawing a label">
           <p>After adding the label it should look like the below image.</p>
           <img src="static/EndOfLabel.png" alt="An image depicting the end result of adding a label">
-          <p>Then, click on each label until the correct label is desired. For this example, I will set both labels to peak</p>
-          <img src="static/SetToPeak.png" alt="Labels after being set to peak">
-          <p>Labels can also be deleted, simply right click a label to delete it.</p>
-          <img src="static/AfterDelete.png" alt="After deletion of a label">
+          <p>Labels can also be changed and deleted either individually, or on labels which are aligned.</p>
 
 
         </div>

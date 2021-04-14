@@ -108,10 +108,7 @@ class Job(db.Resource):
 class JobCursor(db.Cursor):
 
     def __init__(self, cursor):
-        # Call to super or error
-        super().__init__(cursor)
-        # Make parent classes cursor the current cursor for JobCursor
-        self.cursor = cursor.cursor
+        super().__init__(cursor.cursor)
 
     def get(self, flags=0):
         out = db.Cursor.get(self, flags=flags)
@@ -126,12 +123,13 @@ class JobCursor(db.Cursor):
 
         return key, Jobs.Job.fromStorable(value)
 
-    def put(self, value, flags=0):
+    def put(self, key, value, flags=bsddb3.db.DB_CURRENT):
         if value is not None:
             if not isinstance(value, dict):
+
                 value = value.__dict__()
 
-        db.Cursor.put(self, value, flags=flags)
+        db.Cursor.put(self, key, value, flags=flags)
 
     def putWithKey(self, key, value, flags=bsddb3.db.DB_CURRENT):
         if value is not None:
@@ -140,7 +138,7 @@ class JobCursor(db.Cursor):
 
         db.Cursor.putWithKey(self, key, value, flags=flags)
 
-    def next(self, flags=0):
+    def next(self, flags=bsddb3.db.DB_RMW):
         out = db.Cursor.next(self, flags=flags)
 
         if out is None:
@@ -150,7 +148,8 @@ class JobCursor(db.Cursor):
             return key, Jobs.Job.fromStorable(value)
 
     def dup(self, flags=bsddb3.db.DB_POSITION):
-        return db.Cursor.dup(self, flags=flags)
+        cursor = db.Cursor.dup(self, flags=flags)
+        return JobCursor(cursor)
 
 
 class Labels(db.PandasDf):

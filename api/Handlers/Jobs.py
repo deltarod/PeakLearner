@@ -54,6 +54,7 @@ class JobType(type):
 
         if 'jobType' not in storable:
             return None
+
         storableClass = cls.jobTypes[storable['jobType']]
         return storableClass.withStorable(storable)
 
@@ -570,7 +571,7 @@ def restartAllJobs(data):
     txn = db.getTxn()
 
     cursor = db.Job.getCursor(txn, bulk=True)
-    current = cursor.get(flags=bsddb3.db.DB_RMW | bsddb3.db.DB_NEXT)
+    current = cursor.next(flags=bsddb3.db.DB_RMW)
 
     while current is not None:
         key, job = current
@@ -580,7 +581,7 @@ def restartAllJobs(data):
         if restarted:
             cursor.put(restarted)
 
-        current = cursor.get(flags=bsddb3.db.DB_RMW | bsddb3.db.DB_NEXT)
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
 
     cursor.close()
     txn.commit()
@@ -593,7 +594,6 @@ def getJob(data):
 
 
 def processNextQueuedTask(data):
-    print('processing next task')
     txn = db.getTxn()
 
     db.Job.syncDb()
@@ -601,7 +601,7 @@ def processNextQueuedTask(data):
     cursor = db.Job.getCursor(txn=txn, bulk=True)
     # Get highest priority queued job
 
-    key, job = getHighestPriorityQueuedJob(cursor)
+    job, key, cursorAtBest = getHighestPriorityQueuedJob(cursor)
 
     if job is None:
         cursor.close()
@@ -625,13 +625,11 @@ def processNextQueuedTask(data):
 
     job.updateJobStatus()
 
-    cursor.putWithKey(key, job)
+    cursorAtBest.put(key, job)
 
-    cursor.close()
+    cursorAtBest.close()
 
     txn.commit()
-
-
 
     task = job.addJobInfoOnTask(taskToProcess)
     return task
@@ -639,7 +637,8 @@ def processNextQueuedTask(data):
 
 def getHighestPriorityQueuedJob(cursor):
     jobWithTask = None
-    jobKey = None
+    keyWithTask = None
+    cursorAtBest = None
 
     lowerStatus = [status.lower() for status in statuses]
     queuedIndex = lowerStatus.index('queued')
@@ -660,28 +659,30 @@ def getHighestPriorityQueuedJob(cursor):
                     hasQueue = True
 
             if hasQueue:
-                print('has queue')
                 if jobWithTask is None:
                     jobWithTask = job
                     jobKey = key
+                    cursorAtBest = cursor.dup()
 
                 elif jobWithTask.getPriority() < job.getPriority():
                     jobWithTask = job
                     jobKey = key
+                    cursorAtBest.close()
+                    cursorAtBest = cursor.dup()
         current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    return jobKey, jobWithTask
+    cursor.close()
+    return jobWithTask, keyWithTask, cursorAtBest
 
 
 def queueNextTask(data):
-    print('queueing next task')
     txn = db.getTxn()
 
     db.Job.syncDb()
 
     cursor = db.Job.getCursor(txn=txn, bulk=True)
 
-    jobKey, job = getJobWithHighestPriority(cursor)
+    job, key, cursorAtBest = getJobWithHighestPriority(cursor)
 
     if job is None:
         return
@@ -695,22 +696,21 @@ def queueNextTask(data):
 
     job.updateJobStatus()
 
-    cursor.putWithKey(key, job)
+    cursorAtBest.put(key, job)
 
-    cursor.close()
+    cursorAtBest.close()
 
     txn.commit()
 
     task = job.addJobInfoOnTask(taskToUpdate)
-
-    print('after queueing')
 
     return task
 
 
 def getJobWithHighestPriority(cursor):
     jobWithTask = None
-    jobKey = None
+    keyWithTask = None
+    cursorAtBest = None
 
     current = cursor.next(flags=bsddb3.db.DB_RMW)
 
@@ -720,15 +720,19 @@ def getJobWithHighestPriority(cursor):
         if job.status.lower() == 'new':
             if jobWithTask is None:
                 jobWithTask = job
-                jobKey = key
+                keyWithTask = key
+                cursorAtBest = cursor.dup()
 
             elif jobWithTask.getPriority() < job.getPriority():
                 jobWithTask = job
-                jobKey = key
+                keyWithTask = key
+                cursorAtBest.close()
+                cursorAtBest = cursor.dup()
 
         current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    return jobKey, jobWithTask
+    cursor.close()
+    return jobWithTask, keyWithTask, cursorAtBest
 
 
 def getNextTaskInJob(job):

@@ -14,15 +14,13 @@ else:
 def runMonsoon():
     if not checkNextTask():
         print('No new task')
+        time.sleep(30)
         return
 
     if queueNextTask():
         tasks.runTask()
     else:
-        time.sleep(5)
-
-    if not cfg.debug:
-        startNextSlurmJob()
+        time.sleep(30)
 
 
 def runTest():
@@ -67,7 +65,8 @@ def queueNextTask():
 
 def startNextSlurmJob():
     scriptPath = os.path.join(os.getcwd(), cfg.slurmScript)
-    os.system(scriptPath)
+    command = 'sbatch %s' % scriptPath
+    os.system(command)
 
 
 configs = {'test': runTest,

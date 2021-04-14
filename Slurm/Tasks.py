@@ -1,5 +1,4 @@
 import os
-import bbi
 import sys
 import time
 import shutil
@@ -130,6 +129,7 @@ def getCoverageFile(task, dataPath):
     coveragePath = os.path.join(dataPath, 'coverage.bedGraph')
 
     coverageUrl = task['trackUrl']
+    import bbi
 
     with bbi.open(coverageUrl) as coverage:
         try:
@@ -179,8 +179,6 @@ def runTask():
         raise Exception(r.status_code)
 
     task = r.json()
-
-    print('task output\n', task, '\n')
 
     if task is None:
         print('None Task')

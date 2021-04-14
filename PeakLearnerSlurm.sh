@@ -1,8 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=PLSlurm
-#SBATCH --output=/home/tmiller/PeakLearner/runlog.txt
-#SBATCH --chdir=/home/tmiller/PeakLearner/
+#SBATCH --output=/home/tristan/Research/PeakLearner/runlog.txt
+#SBATCH --chdir=/home/tristan/Research/PeakLearner/
 #SBATCH --open-mode=append
-#SBATCH --time=1:01:00
+#SBATCH --ntasks=1
+#SBATCH --time=24:00:00
 
-srun python3 Slurm/run.py
+source /home/tristan/anaconda3/bin/activate PLVenv
+
+srun python3 Slurm/run.py monsoon
+
+sbatch PeakLearnerSlurmLocal.sh
