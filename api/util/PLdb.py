@@ -11,14 +11,22 @@ import api.util.PLConfig as cfg
 
 dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
 
+loaded = False
+
+
+def isLoaded():
+    return loaded
+
+
 # Remove locks if they are left over
-if os.path.exists(dbPath):
-    for file in os.listdir(dbPath):
-        if '__db.0' not in file:
-            continue
-        filePath = os.path.join(dbPath, file)
-        print('deleting lock file', filePath)
-        os.remove(filePath)
+if not loaded:
+    if os.path.exists(dbPath):
+        for file in os.listdir(dbPath):
+            if '__db.0' not in file:
+                continue
+            filePath = os.path.join(dbPath, file)
+            print('deleting lock file', filePath)
+            os.remove(filePath)
 
 
 def closeDBs():
@@ -28,11 +36,7 @@ def closeDBs():
 uwsgi.atexit = closeDBs
 
 
-loaded = False
 
-
-def isLoaded():
-    return loaded
 
 
 @uwsgidecorators.postfork

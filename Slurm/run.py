@@ -15,7 +15,7 @@ def runMonsoon():
     if not checkNextTask():
         if cfg.debug:
             print('No new task')
-        time.sleep(30)
+        time.sleep(15)
         return
 
     if queueNextTask():

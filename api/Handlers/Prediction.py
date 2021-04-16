@@ -17,19 +17,25 @@ def doLearning(num):
 
 # Checks that there are enough changes and labeled regions to begin learning
 def check():
-    changes = db.Prediction('changes').get()
+    txn = db.getTxn()
+    changes = db.Prediction('changes').get(txn=txn, write=True)
     if changes > cfg.numChanges:
-        if not db.Prediction.has_key('EnoughLabels'):
-            db.Prediction('EnoughLabels').put(False)
+        db.Prediction('changes').put(0, txn=txn)
+        txn.commit()
+    else:
+        txn.abort()
+        return False
 
-        if db.Prediction('EnoughLabels').get():
+    if not db.Prediction.has_key('EnoughLabels'):
+        db.Prediction('EnoughLabels').put(False)
+
+    if db.Prediction('EnoughLabels').get():
+        return True
+    else:
+        if checkLabelRegions():
+            db.Prediction('EnoughLabels').put(True)
             return True
-        else:
-            if checkLabelRegions():
-                db.Prediction('EnoughLabels').put(True)
-                return True
-            return False
-    return False
+        return False
 
 
 def checkLabelRegions():

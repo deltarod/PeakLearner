@@ -538,7 +538,7 @@ def convertLabelsToLopart(row, modelStart, modelEnd, denom, bins):
     return output
 
 
-def doPrediction(data, problem, txn=None):
+def doPrediction(data, problem):
     features = db.Features(data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart']).get()
 
     if not isinstance(features, pd.Series):

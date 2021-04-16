@@ -668,12 +668,12 @@ def getHighestPriorityQueuedJob(cursor):
             if hasQueue:
                 if jobWithTask is None:
                     jobWithTask = job
-                    jobKey = key
+                    keyWithTask = key
                     cursorAtBest = cursor.dup()
 
                 elif jobWithTask.getPriority() < job.getPriority():
                     jobWithTask = job
-                    jobKey = key
+                    keyWithTask = key
                     cursorAtBest.close()
                     cursorAtBest = cursor.dup()
         current = cursor.next(flags=bsddb3.db.DB_RMW)
