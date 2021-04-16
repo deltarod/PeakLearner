@@ -13,19 +13,21 @@ else:
 
 def runMonsoon():
     if not checkNextTask():
-        print('No new task')
+        if cfg.debug:
+            print('No new task')
         time.sleep(30)
         return
 
     if queueNextTask():
         tasks.runTask()
     else:
-        time.sleep(30)
+        time.sleep(15)
 
 
 def runTest():
     if not checkNextTask():
-        print('No new task')
+        if cfg.debug:
+            print('No new task')
         return
 
     queueNextTask()

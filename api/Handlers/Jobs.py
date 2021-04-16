@@ -330,6 +330,11 @@ class PredictJob(Job):
 
         Job.updateJobStatus(self)
 
+    def resetJob(self):
+        Job.resetJob(self)
+        if '1' in self.tasks:
+            del self.tasks['1']
+
     def getPriority(self):
         # Predict jobs should be low priority as they should only be ran when no other types of jobs are running
         return 0
@@ -416,7 +421,8 @@ def addDownloadJobs(*args):
         if current is None:
             break
         key, hubInfo = current
-        user, hub = key
+
+        user, hub = key.split()
 
         if 'complete' in hubInfo:
             current = cursor.next(flags=bsddb3.db.DB_RMW)
@@ -442,12 +448,13 @@ def addDownloadJobs(*args):
             current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 
-        noModels = currentTrackProblems[not currentTrackProblems['models']]
+        # Tilde inverts the bool column
+        noModels = currentTrackProblems[~currentTrackProblems['models']]
 
         # If no current problems, mark track as complete so it doesn't have to search the problems
         if len(noModels.index) == 0:
             hubInfo['complete'] = True
-            cursor.put(hubInfo)
+            cursor.put(key.split(), hubInfo)
             current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 
@@ -470,18 +477,18 @@ def addDownloadJobs(*args):
 
         current = cursor.next(flags=bsddb3.db.DB_RMW)
 
-    if currentProblems is not None:
-        submitDownloadJobs(currentProblems)
-
     cursor.close()
 
     txn.commit()
+
+    if currentProblems is not None:
+        submitDownloadJobs(currentProblems)
 
 
 def submitDownloadJobs(problems):
     currentProblems = problems['problems']
 
-    toCreateJobs = currentProblems[not currentProblems['models']]
+    toCreateJobs = currentProblems[~currentProblems['models']]
 
     toCreateJobs.apply(submitPredictJobForDownload, axis=1, args=(problems['user'], problems['hub']))
 
@@ -579,7 +586,7 @@ def restartAllJobs(data):
         restarted = job.restartUnfinished()
 
         if restarted:
-            cursor.put(restarted)
+            cursor.put(key, job)
 
         current = cursor.next(flags=bsddb3.db.DB_RMW)
 

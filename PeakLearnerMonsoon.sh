@@ -6,8 +6,10 @@
 #SBATCH --ntasks=1
 #SBATCH --time=1:00:00
 
+module anaconda3
 source /home/tristan/anaconda3/bin/activate PLVenv
+module R
 
 srun python3 Slurm/run.py monsoon
 
-sbatch -Q PeakLearnerSlurm.sh
+sbatch PeakLearnerMonsoon.sh

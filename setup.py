@@ -8,6 +8,8 @@ requires = [
     'waitress',
     'pandas',
     'pybbi',
+    'scipy',
+    'uwsgi',
 ]
 
 # List of dependencies installed via `pip install -e ".[dev]"`

@@ -9,6 +9,16 @@ import simpleBDB as db
 from api.Handlers import Jobs
 import api.util.PLConfig as cfg
 
+dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
+
+# Remove locks if they are left over
+for file in os.listdir(dbPath):
+    if '__db.0' not in file:
+        continue
+    filePath = os.path.join(dbPath, file)
+    print('deleting lock file', filePath)
+    os.remove(filePath)
+
 
 def closeDBs():
     db.close_dbs()
@@ -19,7 +29,6 @@ uwsgi.atexit = closeDBs
 
 @uwsgidecorators.postfork
 def openDBs():
-    dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
     db.createEnvWithDir(dbPath)
     db.open_dbs()
 

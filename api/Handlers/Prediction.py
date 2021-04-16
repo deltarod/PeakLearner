@@ -1,38 +1,20 @@
-print('prediction first line')
-import pandas as pd
-import numpy as np
+import uwsgi
 import scipy
-
+import numpy as np
+import pandas as pd
+import uwsgidecorators
 from glmnet_python import cvglmnet
 from api.util import PLConfig as cfg, PLdb as db
-import time
-
-shutdownServer = False
 
 
-def runLearning():
-    lastRun = time.time()
-    firstStart = True
-
-    timeDiff = lambda: time.time() - lastRun
-
-    try:
-        while not shutdownServer:
-            if timeDiff() > cfg.timeBetween or firstStart:
-                print('starting prediction model generate')
-                firstStart = False
-                lastRun = time.time()
-                # Compile and process the datapoints to learn with
-                datapoints = getDataPoints()
-                if datapoints is not None:
-                    learn(*datapoints)
-                    print('end learning')
-                else:
-                    print('nonDataPoints')
-            else:
-                time.sleep(1)
-    except (KeyboardInterrupt, SystemExit):
-        pass
+@uwsgidecorators.timer(cfg.timeBetween)
+def doLearning(num):
+    print('learning\n', num)
+    db.openDBs()
+    datapoints = getDataPoints()
+    if datapoints is not None:
+        learn(*datapoints)
+    db.closeDBs()
 
 
 # Checks that there are enough changes and labeled regions to begin learning
@@ -122,7 +104,10 @@ def dropBadCols(df):
 
 
 def learn(X, Y):
-    cvfit = cvglmnet(x=X.to_numpy().copy(), y=Y.to_numpy().copy())
+    X = X.to_numpy(dtype=np.float64, copy=True)
+    print(X.shape[0])
+    Y = Y.to_numpy(dtype=np.float64, copy=True)
+    cvfit = cvglmnet(x=X, y=Y)
     txn = db.getTxn()
     db.Prediction('model').put(cvfit, txn=txn)
     txn.commit()
@@ -188,13 +173,3 @@ def cvglmnetPlotReturn(cvobject, sign_lambda=1.0, **options):
     ax1.set_ylabel(cvobject['name'])
 
     return plt
-
-
-def shutdown():
-    global shutdownServer
-    shutdownServer = True
-
-
-if __name__ == '__main__':
-    print('prediction main start')
-    runLearning()

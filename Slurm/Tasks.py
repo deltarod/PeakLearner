@@ -3,6 +3,7 @@ import sys
 import time
 import shutil
 import requests
+import subprocess
 import PeakSegDisk
 import pandas as pd
 
@@ -129,43 +130,54 @@ def getCoverageFile(task, dataPath):
     coveragePath = os.path.join(dataPath, 'coverage.bedGraph')
 
     coverageUrl = task['trackUrl']
-    import bbi
 
-    with bbi.open(coverageUrl) as coverage:
-        try:
-            coverageInterval = coverage.fetch_intervals(problem['chrom'], problem['chromStart'],
-                                                        problem['chromEnd'], iterator=True)
-            return fixAndSaveCoverage(coverageInterval, coveragePath, problem)
-        except KeyError:
-            return
+    # Make num timeouts configurable
+    for i in range(1, 5):
+        result = subprocess.run(['bin/bigWigToBedGraph',
+                                 coverageUrl,
+                                 coveragePath,
+                                 '-chrom=%s' % problem['chrom'],
+                                 '-start=%s' % str(problem['chromStart']),
+                                 '-end=%s' % str(problem['chromEnd'])],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if not result.stderr == b'':
+            print('download error\n', result.stderr)
+            time.sleep(1)
+            continue
+
+        if os.path.exists(coveragePath):
+            break
+
+        # wait a second then make the request again
+        time.sleep(1)
+
+    return fixCoverage(task, coveragePath)
 
 
-def fixAndSaveCoverage(interval, outputPath, problem):
-    output = []
+def fixCoverage(task, coveragePath):
+    problem = task['problem']
+    coverage = pd.read_csv(coveragePath, sep='\t', header=None)
+    coverage.columns = ['chrom', 'chromStart', 'chromEnd', 'count']
 
-    prevEnd = problem['chromStart']
+    chrom = coverage['chrom'].iloc[0]
+    gapStarts = [problem['chromStart'], ]
+    gapStarts.extend(coverage['chromEnd'].tolist())
+    gapEnds = coverage['chromStart'].tolist()
+    gapEnds.append(problem['chromEnd'])
 
-    for data in interval:
-        # If current data's start doesn't have the previous end
-        if prevEnd < data[1]:
-            # Add zero valued data from prev end to current start
-            output.append((problem['chrom'], prevEnd, data[1], 0))
+    data = {'chrom': chrom, 'chromStart': gapStarts, 'chromEnd': gapEnds}
 
-        output.append(data)
+    gaps = pd.DataFrame(data)
+    gaps = gaps[gaps['chromStart'] < gaps['chromEnd']]
 
-        prevEnd = data[2]
+    gaps['count'] = 0
 
-    # If end of data doesn't completely go to end of problem
-    # I don't think this is strictly necessary
-    if prevEnd < problem['chromEnd']:
-        # Output[0][0] = the chrom
-        output.append((problem['chrom'], prevEnd, problem['chromEnd'], 0))
+    fixedCoverage = pd.concat([gaps, coverage]).sort_values('chromStart', ignore_index=True)
 
-    output = pd.DataFrame(output)
-    output.columns = ['chrom', 'chromStart', 'chromEnd', 'count']
+    fixedCoverage.to_csv(coveragePath, sep='\t', header=False, index=False)
 
-    output.to_csv(outputPath, sep='\t', float_format='%d', header=False, index=False)
-    return outputPath
+    return coveragePath
 
 
 def runTask():
