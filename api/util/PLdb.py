@@ -12,12 +12,13 @@ import api.util.PLConfig as cfg
 dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
 
 # Remove locks if they are left over
-for file in os.listdir(dbPath):
-    if '__db.0' not in file:
-        continue
-    filePath = os.path.join(dbPath, file)
-    print('deleting lock file', filePath)
-    os.remove(filePath)
+if os.path.exists(dbPath):
+    for file in os.listdir(dbPath):
+        if '__db.0' not in file:
+            continue
+        filePath = os.path.join(dbPath, file)
+        print('deleting lock file', filePath)
+        os.remove(filePath)
 
 
 def closeDBs():
