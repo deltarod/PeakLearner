@@ -28,8 +28,17 @@ def closeDBs():
 uwsgi.atexit = closeDBs
 
 
+loaded = False
+
+
+def isLoaded():
+    return loaded
+
+
 @uwsgidecorators.postfork
 def openDBs():
+    global loaded
+    loaded = True
     db.createEnvWithDir(dbPath)
     db.open_dbs()
 

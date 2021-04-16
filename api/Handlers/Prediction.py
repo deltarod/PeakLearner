@@ -9,12 +9,10 @@ from api.util import PLConfig as cfg, PLdb as db
 
 @uwsgidecorators.timer(cfg.timeBetween)
 def doLearning(num):
-    print('learning\n', num)
-    db.openDBs()
-    datapoints = getDataPoints()
-    if datapoints is not None:
-        learn(*datapoints)
-    db.closeDBs()
+    if db.isLoaded():
+        datapoints = getDataPoints()
+        if datapoints is not None:
+            learn(*datapoints)
 
 
 # Checks that there are enough changes and labeled regions to begin learning
@@ -105,7 +103,6 @@ def dropBadCols(df):
 
 def learn(X, Y):
     X = X.to_numpy(dtype=np.float64, copy=True)
-    print(X.shape[0])
     Y = Y.to_numpy(dtype=np.float64, copy=True)
     cvfit = cvglmnet(x=X, y=Y)
     txn = db.getTxn()
