@@ -2,7 +2,7 @@ import bsddb3
 import logging
 import pandas as pd
 from api.Handlers import Models
-from api.util import PLdb as db
+from api.util import PLdb as db, PLConfig as cfg
 from api.Handlers.Handler import Handler
 
 log = logging.getLogger(__name__)
@@ -399,10 +399,11 @@ def updateTask(data):
 
     task = jobToUpdate.addJobInfoOnTask(task)
 
-    if jobToUpdate.status.lower() == 'done':
-        checkForMoreJobs(task)
-        if checkIfRunDownloadJobs():
-            addDownloadJobs()
+    if cfg.doIdlePredictions:
+        if jobToUpdate.status.lower() == 'done':
+            checkForMoreJobs(task)
+            if checkIfRunDownloadJobs():
+                addDownloadJobs()
     return task
 
 
@@ -600,6 +601,7 @@ def getJob(data):
     return output
 
 
+# TODO: Figure out how to make the next 4 functions more reusable
 def processNextQueuedTask(data):
     txn = db.getTxn()
 

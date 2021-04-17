@@ -32,6 +32,7 @@ if 'data' not in configSections:
 
 if 'learning' not in configSections:
     config.add_section('learning')
+    config['learning']['doIdlePredictions'] = 'False'
     config['learning']['timeBetween'] = '600'
     config['learning']['numChanges'] = '10'
     config['learning']['minLabeledRegions'] = '20'
@@ -51,6 +52,7 @@ timeBetween = int(config['learning']['timeBetween'])
 numChanges = int(config['learning']['numChanges'])
 minLabeledRegions = int(config['learning']['minLabeledRegions'])
 backupPath = config['http']['backupPath']
+doIdlePredictions = config['learning']['doIdlePredictions'].lower() == 'true'
 
 
 def testing():
