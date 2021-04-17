@@ -408,7 +408,7 @@ def generateLOPARTModel(data, problem):
     trackUrl = hubInfo['tracks'][data['track']]['url']
     datapoints = data['width']
 
-    start = max(data['visible']['start'], problem['chromStart'])
+    start = max(data['visible']['start'], problem['chromStart'], 0)
     end = min(data['visible']['end'], problem['chromEnd'])
 
     scaledBins = int(scale * (end - start))
