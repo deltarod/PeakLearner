@@ -4,12 +4,13 @@
 #SBATCH --chdir=/home/tem83/PeakLearner/
 #SBATCH --open-mode=append
 #SBATCH --ntasks=1
-#SBATCH --time=1:00:00
+#SBATCH --mem=2048
+#SBATCH --time=15:00
 
 module load anaconda3
 conda activate PeakLearner
 module load R
 
-srun python3 Slurm/run.py monsoon
+/home/tem83/.conda/envs/PeakLearner/bin/python Slurm/run.py monsoon
 
-#sbatch PeakLearnerMonsoon.sh
+sbatch PeakLearnerMonsoon.sh

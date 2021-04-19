@@ -4,10 +4,7 @@ import time
 import shutil
 import requests
 import subprocess
-try:
-    import PeakSegDisk
-except ModuleNotFoundError:
-
+import PeakSegDisk
 import pandas as pd
 
 try:
