@@ -3,7 +3,7 @@ import json
 import bsddb3
 import datetime
 import pandas as pd
-import simpleBDB as db
+
 from api.Handlers import Jobs
 import api.util.PLConfig as cfg
 
@@ -47,9 +47,10 @@ try:
 
     uwsgi.atexit = closeDBs
 
-
     @uwsgidecorators.postfork
     def doOpen():
+        global db
+        import simpleBDB as db
         openDBs()
 
 
