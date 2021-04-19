@@ -1,8 +1,6 @@
 import os
 import json
 import bsddb3
-import uwsgi
-import uwsgidecorators
 import datetime
 import pandas as pd
 import simpleBDB as db
@@ -29,22 +27,38 @@ if not loaded:
             os.remove(filePath)
 
 
-def closeDBs():
-    db.close_dbs()
-
-
-uwsgi.atexit = closeDBs
-
-
-
-
-
-@uwsgidecorators.postfork
 def openDBs():
     global loaded
     loaded = True
     db.createEnvWithDir(dbPath)
     db.open_dbs()
+
+
+def closeDBs():
+    global loaded
+    loaded = False
+    db.close_dbs()
+
+
+try:
+    import uwsgi
+    import uwsgidecorators
+
+
+    uwsgi.atexit = closeDBs
+
+
+    @uwsgidecorators.postfork
+    def doOpen():
+        openDBs()
+
+
+except ModuleNotFoundError:
+    print('opening')
+    openDBs()
+    import atexit
+    atexit.register(closeDBs)
+
 
 
 def getTxn():

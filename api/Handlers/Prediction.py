@@ -1,18 +1,22 @@
-import uwsgi
+
 import scipy
 import numpy as np
 import pandas as pd
-import uwsgidecorators
 from glmnet_python import cvglmnet
 from api.util import PLConfig as cfg, PLdb as db
 
+try:
+    import uwsgi
+    import uwsgidecorators
 
-@uwsgidecorators.timer(cfg.timeBetween)
-def doLearning(num):
-    if db.isLoaded():
-        datapoints = getDataPoints()
-        if datapoints is not None:
-            learn(*datapoints)
+    @uwsgidecorators.timer(cfg.timeBetween)
+    def doLearning(num):
+        if db.isLoaded():
+            datapoints = getDataPoints()
+            if datapoints is not None:
+                learn(*datapoints)
+except ModuleNotFoundError:
+    pass
 
 
 # Checks that there are enough changes and labeled regions to begin learning

@@ -8,6 +8,6 @@
 
 source /home/tristan/anaconda3/bin/activate PLVenv
 
-srun python3 Slurm/run.py monsoon
+srun python3 Slurm/run.py
 
 sbatch -Q PeakLearnerSlurm.sh

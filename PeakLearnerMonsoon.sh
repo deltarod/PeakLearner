@@ -12,4 +12,4 @@ module R
 
 srun python3 Slurm/run.py monsoon
 
-sbatch PeakLearnerMonsoon.sh
+sbatch -Q eakLearnerMonsoon.sh
