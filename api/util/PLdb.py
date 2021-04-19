@@ -3,9 +3,9 @@ import json
 import bsddb3
 import datetime
 import pandas as pd
-
 from api.Handlers import Jobs
 import api.util.PLConfig as cfg
+db = None
 
 dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
 
