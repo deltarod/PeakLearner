@@ -29,15 +29,16 @@ if not loaded:
 
 def openDBs():
     global loaded
-    loaded = True
-    db.createEnvWithDir(dbPath)
-    db.open_dbs()
+    if db is not None:
+        db.createEnvWithDir(dbPath)
+        db.open_dbs()
 
 
 def closeDBs():
     global loaded
     loaded = False
-    db.close_dbs()
+    if db is not None:
+        db.close_dbs()
 
 
 try:
@@ -56,10 +57,11 @@ try:
 
 except ModuleNotFoundError:
     print('opening')
+    global db
+    import simpleBDB as db
     openDBs()
     import atexit
     atexit.register(closeDBs)
-
 
 
 def getTxn():
