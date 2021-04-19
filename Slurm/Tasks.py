@@ -4,7 +4,10 @@ import time
 import shutil
 import requests
 import subprocess
-import PeakSegDisk
+try:
+    import PeakSegDisk
+except ModuleNotFoundError:
+
 import pandas as pd
 
 try:
@@ -44,9 +47,16 @@ def model(task, dataPath, coveragePath, trackUrl):
 
 def feature(task, dataPath, coveragePath, trackUrl):
     command = 'Rscript %s %s' % (genFeaturesPath, dataPath)
-    os.system(command)
+    result = subprocess.run(['Rscript',
+                             genFeaturesPath,
+                             dataPath],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     featurePath = os.path.join(dataPath, 'features.tsv')
+
+    if not os.path.exists(featurePath):
+        print('out\n', result.stdout)
+        print('err\n', result.stderr)
 
     featureDf = pd.read_csv(featurePath, sep='\t')
 
