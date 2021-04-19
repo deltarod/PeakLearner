@@ -6,10 +6,11 @@
 #SBATCH --ntasks=1
 #SBATCH --mem=2048
 #SBATCH --time=15:00
+#SBATCH --export=ALL
 
+module load R
 module load anaconda3
 conda activate PeakLearner
-module load R
 
 /home/tem83/.conda/envs/PeakLearner/bin/python Slurm/run.py monsoon
 
