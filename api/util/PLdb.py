@@ -57,7 +57,6 @@ try:
 
 except ModuleNotFoundError:
     print('opening')
-    global db
     import simpleBDB as db
     openDBs()
     import atexit
