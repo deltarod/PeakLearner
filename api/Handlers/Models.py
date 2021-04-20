@@ -114,8 +114,6 @@ def updateAllModelLabels(data, labels):
         modelsums = modelSummaries.get(txn=txn, write=True)
 
         if len(modelsums.index) < 1:
-            txn.abort()
-            txn = db.getTxn()
             out = submitPregenJob(problem, data, txn=txn)
             if out is not None:
                 txn.commit()
