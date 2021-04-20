@@ -119,6 +119,8 @@ def updateAllModelLabels(data, labels):
             out = submitPregenJob(problem, data, txn=txn)
             if out is not None:
                 txn.commit()
+            else:
+                txn.abort()
             continue
 
         newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
