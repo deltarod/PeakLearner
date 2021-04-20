@@ -43,7 +43,6 @@ def model(task, dataPath, coveragePath, trackUrl):
 
 
 def feature(task, dataPath, coveragePath, trackUrl):
-    command = 'Rscript %s %s' % (genFeaturesPath, dataPath)
     result = subprocess.run(['Rscript',
                              genFeaturesPath,
                              dataPath],

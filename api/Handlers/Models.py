@@ -116,8 +116,9 @@ def updateAllModelLabels(data, labels):
         if len(modelsums.index) < 1:
             txn.abort()
             txn = db.getTxn()
-            submitPregenJob(problem, data, txn=txn)
-            txn.commit()
+            out = submitPregenJob(problem, data, txn=txn)
+            if out is not None:
+                txn.commit()
             continue
 
         newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
@@ -243,7 +244,7 @@ def submitPregenJob(problem, data, txn=None):
                          problem,
                          penalties)
 
-    job.putNewJobWithTxn(txn=txn)
+    return job.putNewJobWithTxn(txn=txn)
 
 
 def submitGridSearch(problem, data, minPenalty, maxPenalty, num=pl.gridSearchSize, txn=None):

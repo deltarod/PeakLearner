@@ -31,5 +31,5 @@ WORKDIR jbrowse/jbrowse/
 RUN ./setup.sh
 WORKDIR ../../
 RUN python3 -m pip install -e .
-CMD ["pserve", "production.ini"]
-#CMD ["uwsgi", "wsgi.ini"]
+#CMD ["pserve", "production.ini"]
+CMD ["uwsgi", "wsgi.ini"]

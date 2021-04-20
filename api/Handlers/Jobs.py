@@ -111,14 +111,17 @@ class Job(metaclass=JobType):
     def putNewJob(self, checkExists=True):
         txn = db.getTxn()
         value = self.putNewJobWithTxn(txn, checkExists=checkExists)
+        if value is None:
+            return value
         txn.commit()
         return value
 
     def putNewJobWithTxn(self, txn, checkExists=True):
         """puts Job into job list if the job doesn't exist"""
         if checkExists:
-            if self.checkIfExists():
-                return
+            if self.checkIfExists(txn=txn):
+                txn.abort()
+                return None
 
         self.id = str(db.JobInfo('Id').incrementId(txn=txn))
         self.iteration = db.Iteration(self.user,
@@ -131,12 +134,19 @@ class Job(metaclass=JobType):
 
         return self.id
 
-    def checkIfExists(self):
+    def checkIfExists(self, txn=None):
         """Check if the current job exists in the DB"""
-        currentJobs = db.Job.all()
-        for job in currentJobs:
+        cursor = db.Job.getCursor(txn=txn, bulk=True)
+        current = cursor.next(flags=bsddb3.db.DB_RMW)
+
+        while current is not None:
+            key, job = current
             if self.equals(job):
+                cursor.close()
                 return True
+            current = cursor.next(flags=bsddb3.db.DB_RMW)
+
+        cursor.close()
         return False
 
     def equals(self, jobToCheck):
@@ -696,7 +706,6 @@ def queueNextTask(data):
     if job is None:
         return
 
-    # Re get the job to obtain write lock
     key = getNextTaskInJob(job)
 
     taskToUpdate = job.tasks[key]

@@ -3,9 +3,9 @@ import json
 import bsddb3
 import datetime
 import pandas as pd
+import simpleBDB as db
 from api.Handlers import Jobs
 import api.util.PLConfig as cfg
-db = None
 
 dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
 
@@ -30,6 +30,7 @@ if not loaded:
 def openDBs():
     global loaded
     if db is not None:
+        print('opening db')
         db.createEnvWithDir(dbPath)
         db.open_dbs()
 
@@ -38,6 +39,7 @@ def closeDBs():
     global loaded
     loaded = False
     if db is not None:
+        print('closing db')
         db.close_dbs()
 
 
@@ -50,14 +52,10 @@ try:
 
     @uwsgidecorators.postfork
     def doOpen():
-        global db
-        import simpleBDB as db
         openDBs()
 
 
 except ModuleNotFoundError:
-    print('opening')
-    import simpleBDB as db
     openDBs()
     import atexit
     atexit.register(closeDBs)
