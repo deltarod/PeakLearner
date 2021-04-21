@@ -61,7 +61,9 @@ except ModuleNotFoundError:
     atexit.register(closeDBs)
 
 
-def getTxn():
+def getTxn(parent=None):
+    if parent is not None:
+        return db.getEnvTxn(parent=parent)
     return db.getEnvTxn()
 
 
@@ -125,68 +127,33 @@ class Job(db.Resource):
     def make_details(self):
         return {}
 
-    def get(self, txn=None, write=False):
-        storable = db.Resource.get(self, txn=txn, write=write)
-        return Jobs.Job.fromStorable(storable)
-
-    def put(self, value, txn=None):
-        if value is not None:
-            if not isinstance(value, dict):
-                value = value.__dict__()
-        db.Resource.put(self, value, txn=txn)
-
     @classmethod
     def getCursor(cls, txn=None, readCommited=False, bulk=False):
-        return JobCursor(db.DB.getCursor(cls, txn=txn, readCommited=readCommited, bulk=bulk))
+        return JobCursor(db.DB.getCursor(cls, txn=txn, readCommited=readCommited, bulk=bulk), cls)
+
+    @classmethod
+    def fromStorable(cls, storable):
+        return Jobs.Job.fromStorable(db.Resource.fromStorable(storable))
+
+    @classmethod
+    def toStorable(cls, data):
+        if data is not None:
+            if not isinstance(data, dict):
+                data = data.__dict__()
+
+            return db.Resource.toStorable(data)
+        return None
 
     pass
 
 
 class JobCursor(db.Cursor):
-
-    def __init__(self, cursor):
-        super().__init__(cursor.cursor)
-
-    def get(self, flags=0):
-        out = db.Cursor.get(self, flags=flags)
-        if out is None:
-            return None
-        else:
-            key, value = out
-            return key, Jobs.Job.fromStorable(value)
-
-    def getWithKey(self, key, flags=bsddb3.db.DB_SET):
-        key, value = db.Cursor.getWithKey(self, key, flags=flags)
-
-        return key, Jobs.Job.fromStorable(value)
-
-    def put(self, key, value, flags=bsddb3.db.DB_CURRENT):
-        if value is not None:
-            if not isinstance(value, dict):
-
-                value = value.__dict__()
-
-        db.Cursor.put(self, key, value, flags=flags)
-
-    def putWithKey(self, key, value, flags=bsddb3.db.DB_CURRENT):
-        if value is not None:
-            if not isinstance(value, dict):
-                value = value.__dict__()
-
-        db.Cursor.putWithKey(self, key, value, flags=flags)
-
-    def next(self, flags=bsddb3.db.DB_RMW):
-        out = db.Cursor.next(self, flags=flags)
-
-        if out is None:
-            return None
-        else:
-            key, value = out
-            return key, Jobs.Job.fromStorable(value)
+    def __init__(self, cursor, parent):
+        super().__init__(cursor.cursor, parent)
 
     def dup(self, flags=bsddb3.db.DB_POSITION):
         cursor = db.Cursor.dup(self, flags=flags)
-        return JobCursor(cursor)
+        return JobCursor(cursor, Job)
 
 
 class Labels(db.PandasDf):

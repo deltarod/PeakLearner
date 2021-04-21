@@ -26,7 +26,6 @@ class TrackInfoHandler(Handler.TrackHandler):
 
 
 def getProblemsForChrom(genome, chrom, txn=None):
-
     problems = db.Problems(genome).get(txn=txn)
 
     return problems[problems['chrom'] == chrom].copy()

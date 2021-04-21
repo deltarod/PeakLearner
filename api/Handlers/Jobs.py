@@ -120,7 +120,6 @@ class Job(metaclass=JobType):
         """puts Job into job list if the job doesn't exist"""
         if checkExists:
             if self.checkIfExists(txn=txn):
-                txn.abort()
                 return None
 
         self.id = str(db.JobInfo('Id').incrementId(txn=txn))
@@ -433,7 +432,7 @@ def addDownloadJobs(*args):
             break
         key, hubInfo = current
 
-        user, hub = key.split()
+        user, hub = key
 
         if 'complete' in hubInfo:
             current = cursor.next(flags=bsddb3.db.DB_RMW)
@@ -465,7 +464,7 @@ def addDownloadJobs(*args):
         # If no current problems, mark track as complete so it doesn't have to search the problems
         if len(noModels.index) == 0:
             hubInfo['complete'] = True
-            cursor.put(key.split(), hubInfo)
+            cursor.put(key, hubInfo)
             current = cursor.next(flags=bsddb3.db.DB_RMW)
             continue
 

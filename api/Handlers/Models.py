@@ -1,3 +1,5 @@
+import bsddb3.db
+
 import PeakError
 import LOPART
 import pandas as pd
@@ -100,37 +102,50 @@ def whichModelToDisplay(data, problem, summary):
     return outputDf
 
 
-def updateAllModelLabels(data, labels):
+def updateAllModelLabels(data, labels, txn):
     # This is the problems that the label update is in
 
     problems = Tracks.getProblems(data)
 
+    cursor = db.ModelSummaries.getCursor(txn=txn, bulk=True)
+
     for problem in problems:
-        txn = db.getTxn()
+        key = (data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart'])
 
-        modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
-                                           problem['chromStart'])
+        current = cursor.getWithKey(key, flags=bsddb3.db.DB_SET | bsddb3.db.DB_RMW)
 
-        modelsums = modelSummaries.get(txn=txn, write=True)
-
-        if len(modelsums.index) < 1:
-            out = submitPregenJob(problem, data, txn=txn)
-            if out is not None:
-                txn.commit()
+        if current is None:
+            jobTxn = db.getTxn(parent=txn)
+            out = submitPregenJob(problem, data, txn=jobTxn)
+            if out is None:
+                jobTxn.abort()
+            else:
+                jobTxn.commit()
             continue
 
-        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
+        key, modelsums = current
 
-        modelSummaries.put(newSum, txn=txn)
+        if len(modelsums.index) < 1:
+            jobTxn = db.getTxn(parent=txn)
+            out = submitPregenJob(problem, data, txn=jobTxn)
+            if out is None:
+                jobTxn.abort()
+            else:
+                jobTxn.commit()
+            continue
+
+        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem))
+
+        cursor.put(key, newSum)
 
         checkGenerateModels(newSum, problem, data, txn=txn)
 
-        txn.commit()
+    cursor.close()
 
 
-def modelSumLabelUpdate(modelSum, labels, data, problem, txn):
+def modelSumLabelUpdate(modelSum, labels, data, problem):
     model = db.Model(data['user'], data['hub'], data['track'], problem['chrom'],
-                     problem['chromStart'], modelSum['penalty']).get(txn=txn)
+                     problem['chromStart'], modelSum['penalty']).get()
 
     return calculateModelLabelError(model, labels, problem, modelSum['penalty'])
 
@@ -308,7 +323,7 @@ def putModel(data):
     txn = db.getTxn()
     db.Model(user, hub, track, problem['chrom'], problem['chromStart'], penalty).put(modelData, txn=txn)
     db.Prediction('changes').increment(txn=txn)
-    labels = db.Labels(user, hub, track, problem['chrom']).get()
+    labels = db.Labels(user, hub, track, problem['chrom']).get(txn=txn)
     errorSum = calculateModelLabelError(modelData, labels, problem, penalty)
     db.ModelSummaries(user, hub, track, problem['chrom'], problem['chromStart']).add(errorSum, txn=txn)
     txn.commit()

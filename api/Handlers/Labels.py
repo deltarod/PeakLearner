@@ -36,14 +36,14 @@ def addLabel(data):
         inBounds = labels.apply(db.checkInBounds, axis=1, args=(data['ref'], data['start'], data['end']))
         # If there are any labels currently stored within the region which the new label is being added
         if inBounds.any():
-            txn.commit()
+            txn.abort()
             return False
 
     labels = labels.append(newLabel, ignore_index=True).sort_values('chromStart', ignore_index=True)
 
     labelsDb.put(labels, txn=txn)
     db.Prediction('changes').increment(txn=txn)
-    Models.updateAllModelLabels(data, labels)
+    Models.updateAllModelLabels(data, labels, txn)
     txn.commit()
     return data
 
@@ -58,7 +58,7 @@ def removeLabel(data):
     labels = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
     removed, after = labels.remove(toRemove, txn=txn)
     db.Prediction('changes').increment(txn=txn)
-    Models.updateAllModelLabels(data, after)
+    Models.updateAllModelLabels(data, after, txn)
     txn.commit()
     return removed.to_dict()
 
@@ -76,7 +76,7 @@ def removeAlignedLabels(data):
         labelDb = db.Labels(user, hub, track, data['ref'])
         item, labels = labelDb.remove(labelToRemove, txn=txn)
         db.Prediction('changes').increment(txn=txn)
-        Models.updateAllModelLabels(data, labels)
+        Models.updateAllModelLabels(data, labels, txn)
         txn.commit()
 
 
@@ -89,7 +89,7 @@ def updateLabel(data):
     labelDb = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
     item, labels = labelDb.add(labelToUpdate, txn=txn)
     db.Prediction('changes').increment(txn=txn)
-    Models.updateAllModelLabels(data, labels)
+    Models.updateAllModelLabels(data, labels, txn)
     txn.commit()
     return item.to_dict()
 
@@ -108,7 +108,7 @@ def updateAlignedLabels(data):
         labelDb = db.Labels(user, hub, track, data['ref'])
         item, labels = labelDb.add(labelToUpdate, txn=txn)
         db.Prediction('changes').increment(txn=txn)
-        Models.updateAllModelLabels(data, labels)
+        Models.updateAllModelLabels(data, labels, txn)
         txn.commit()
 
 

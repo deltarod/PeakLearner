@@ -205,7 +205,6 @@ def storeHubInfo(user, hub, tracks, hubInfo, genome):
     hubInfo['tracks'] = hubInfoTracks
     db.HubInfo(user, hub).put(hubInfo, txn=txn)
     txn.commit()
-
     return '/%s/' % os.path.join(str(user), hub)
 
 
@@ -257,7 +256,7 @@ def saveLabelGroup(group, user, hub, track, genome, coverageUrl):
     txn.commit()
 
 
-def submitPregenWithData(doPregen, user, hub, track, coverageUrl, txn=None):
+def submitPregenWithData(doPregen, user, hub, track, coverageUrl):
     recs = doPregen.to_dict('records')
     for problem in recs:
         penalties = Models.getPrePenalties()
@@ -583,7 +582,11 @@ def generateProblems(genome, path, txn=None):
     output['chromStart'] = output['chromStart'].astype(int)
     output['chromEnd'] = output['chromEnd'].astype(int)
 
-    db.Problems(genome).put(output, txn=txn)
+    problemsTxn = db.getTxn(parent=txn)
+
+    db.Problems(genome).put(output, txn=problemsTxn)
+
+    problemsTxn.commit()
 
     output.to_csv(outputFile, sep='\t', index=False, header=False)
 
