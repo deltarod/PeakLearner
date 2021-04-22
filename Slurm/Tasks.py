@@ -23,14 +23,14 @@ def model(task, dataPath, coveragePath, trackUrl):
     except FileNotFoundError:
         pass
 
-    if os.path.exists(segmentsPath):
-        if not sendSegments(segmentsPath, task, trackUrl):
+    if os.path.exists(lossPath):
+        if not sendLoss(lossPath, task, trackUrl):
             return False
     else:
         return False
 
-    if os.path.exists(lossPath):
-        if not sendLoss(lossPath, task, trackUrl):
+    if os.path.exists(segmentsPath):
+        if not sendSegments(segmentsPath, task, trackUrl):
             return False
     else:
         return False

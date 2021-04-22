@@ -11,6 +11,7 @@ try:
 
     @uwsgidecorators.timer(cfg.timeBetween)
     def doLearning(num):
+        print('prediction system running')
         if db.isLoaded():
             datapoints = getDataPoints()
             if datapoints is not None:
@@ -30,8 +31,12 @@ def check():
         txn.abort()
         return False
 
+
     if not db.Prediction.has_key('EnoughLabels'):
-        db.Prediction('EnoughLabels').put(False)
+        txn = db.getTxn()
+        db.Prediction('EnoughLabels').put(False, txn=txn)
+        txn.commit()
+        return True
 
     if db.Prediction('EnoughLabels').get():
         return True

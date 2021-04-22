@@ -112,6 +112,7 @@ class Job(metaclass=JobType):
         txn = db.getTxn()
         value = self.putNewJobWithTxn(txn, checkExists=checkExists)
         if value is None:
+            txn.abort()
             return value
         txn.commit()
         return value
@@ -136,14 +137,14 @@ class Job(metaclass=JobType):
     def checkIfExists(self, txn=None):
         """Check if the current job exists in the DB"""
         cursor = db.Job.getCursor(txn=txn, bulk=True)
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next()
 
         while current is not None:
             key, job = current
             if self.equals(job):
                 cursor.close()
                 return True
-            current = cursor.next(flags=bsddb3.db.DB_RMW)
+            current = cursor.next()
 
         cursor.close()
         return False
@@ -765,11 +766,22 @@ def getNextTaskInJob(job):
 
 def checkNewTask(data):
     """Checks through all the jobs to see if any of them are new"""
-    jobs = db.Job.all()
-    for job in jobs:
+    txn = db.getTxn()
+    cursor = db.Job.getCursor(txn=txn, bulk=True)
+    out = False
+
+    current = cursor.next()
+    while current is not None:
+        key, job = current
+
         if job.status.lower() == 'new':
-            return True
-    return False
+            out = True
+            break
+        current = cursor.next()
+
+    cursor.close()
+    txn.commit()
+    return out
 
 
 def getAllJobs(data):
