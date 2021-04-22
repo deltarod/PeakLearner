@@ -27,40 +27,16 @@ def check():
     if changes > cfg.numChanges:
         db.Prediction('changes').put(0, txn=txn)
         txn.commit()
-    else:
-        txn.abort()
-        return False
-
-
-    if not db.Prediction.has_key('EnoughLabels'):
-        txn = db.getTxn()
-        db.Prediction('EnoughLabels').put(False, txn=txn)
-        txn.commit()
         return True
-
-    if db.Prediction('EnoughLabels').get():
-        return True
-    else:
-        if checkLabelRegions():
-            db.Prediction('EnoughLabels').put(True)
-            return True
-        return False
-
-
-def checkLabelRegions():
-    labeledRegions = 0
-    for key in db.ModelSummaries.db_key_tuples():
-        modelSum = db.ModelSummaries(*key).get()
-        if not modelSum.empty:
-            if modelSum['regions'].max() > 0:
-                labeledRegions = labeledRegions + 1
-
-    return labeledRegions > cfg.minLabeledRegions
+    txn.abort()
+    return False
 
 
 def getDataPoints():
     if not check():
         return
+
+    print('after check')
 
     dataPoints = pd.DataFrame()
 
