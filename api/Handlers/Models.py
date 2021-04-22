@@ -321,11 +321,11 @@ def putModel(data):
     track = modelInfo['track']
 
     txn = db.getTxn()
-    db.Model(user, hub, track, problem['chrom'], problem['chromStart'], penalty).put(modelData, txn=txn)
-    db.Prediction('changes').increment(txn=txn)
     labels = db.Labels(user, hub, track, problem['chrom']).get(txn=txn)
     errorSum = calculateModelLabelError(modelData, labels, problem, penalty)
+    db.Prediction('changes').increment(txn=txn)
     db.ModelSummaries(user, hub, track, problem['chrom'], problem['chromStart']).add(errorSum, txn=txn)
+    db.Model(user, hub, track, problem['chrom'], problem['chromStart'], penalty).put(modelData, txn=txn)
     txn.commit()
 
     return modelInfo

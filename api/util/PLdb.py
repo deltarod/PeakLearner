@@ -156,15 +156,19 @@ class JobCursor(db.Cursor):
         return JobCursor(cursor, Job)
 
 
+def labelCompare(item, df):
+    startSame = item['chromStart'] == df['chromStart']
+
+    endSame = item['chromEnd'] == df['chromEnd']
+
+    return startSame & endSame
+
+
 class Labels(db.PandasDf):
     keys = ("user", "hub", "track", "chrom")
 
     def conditional(self, item, df):
-        startSame = item['chromStart'] == df['chromStart']
-
-        endSame = item['chromEnd'] == df['chromEnd']
-
-        return startSame & endSame
+        return labelCompare(item, df)
 
     def sortDf(self, df):
         df['floatStart'] = df['chromStart'].astype(float)

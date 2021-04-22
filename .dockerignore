@@ -1,5 +1,6 @@
 .pytest_cache
 backup
 bin
-jbrowse/jbrowse/*
+jbrowse/jbrowse/
 slurmdata/
+/.git/

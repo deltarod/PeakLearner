@@ -1,3 +1,4 @@
+import bsddb3.db
 import pandas as pd
 from api.util import PLdb as db
 from api.Handlers import Models, Handler
@@ -106,8 +107,8 @@ def updateAlignedLabels(data):
     for track in data['tracks']:
         txn = db.getTxn()
         labelDb = db.Labels(user, hub, track, data['ref'])
-        item, labels = labelDb.add(labelToUpdate, txn=txn)
         db.Prediction('changes').increment(txn=txn)
+        item, labels = labelDb.add(labelToUpdate, txn=txn)
         Models.updateAllModelLabels(data, labels, txn)
         txn.commit()
 

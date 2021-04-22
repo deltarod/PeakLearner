@@ -24,12 +24,17 @@ RUN chmod a+x bin/bigWigSummary
 COPY ./requirements.txt .
 RUN python3 -m pip install -r requirements.txt
 
-FROM envSetup AS build
-COPY . .
-RUN git submodule update --init --recursive
-WORKDIR jbrowse/jbrowse/
+FROM envSetup AS jbrowse
+RUN mkdir jbrowse/
+WORKDIR jbrowse/
+RUN git clone https://github.com/PeakLearner/jbrowse.git
+WORKDIR jbrowse/
+RUN git submodule update --init --remote
 RUN ./setup.sh
 WORKDIR ../../
+
+FROM jbrowse AS build
+COPY . .
 RUN python3 -m pip install -e .
 #CMD ["pserve", "production.ini"]
 CMD ["uwsgi", "wsgi.ini"]
