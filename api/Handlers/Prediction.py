@@ -41,11 +41,14 @@ def getDataPoints():
     dataPoints = pd.DataFrame()
 
     for key in db.ModelSummaries.db_key_tuples():
-        modelSum = db.ModelSummaries(*key).get()
+        txn = db.getTxn()
+        modelSum = db.ModelSummaries(*key).get(txn=txn)
         if modelSum.empty:
+            txn.abort()
             continue
 
         if modelSum['regions'].max() < 1:
+            txn.abort()
             continue
 
         withPeaks = modelSum[modelSum['numPeaks'] > 0]
@@ -63,6 +66,7 @@ def getDataPoints():
             datapoint['logPenalty'] = penalty
 
             dataPoints = dataPoints.append(datapoint, ignore_index=True)
+        txn.commit()
 
     # TODO: Save datapoints, update ones which have changed, not all of them every time
 

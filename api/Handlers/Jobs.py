@@ -65,7 +65,7 @@ class Job(metaclass=JobType):
     jobType = 'job'
 
     def __init__(self, user, hub, track, problem, priority, trackUrl=None, tasks=None):
-        self.user = user
+        self.user = str(user)
         self.hub = hub
         self.track = track
         self.problem = problem
@@ -98,7 +98,7 @@ class Job(metaclass=JobType):
         """Creates new job using the storable object"""
         # https://stackoverflow.com/questions/2168964/how-to-create-a-class-instance-without-calling-initializer
         self = cls.__new__(cls)
-        self.user = storable['user']
+        self.user = str(storable['user'])
         self.hub = storable['hub']
         self.track = storable['track']
         self.problem = storable['problem']
@@ -154,6 +154,8 @@ class Job(metaclass=JobType):
     def equals(self, jobToCheck):
         """Check if current job is equal to the job to check"""
         if self.user != jobToCheck.user:
+            print(self.user, jobToCheck.user)
+            print(type(self.user), type(jobToCheck.user))
             return False
 
         if self.hub != jobToCheck.hub:

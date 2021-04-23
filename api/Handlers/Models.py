@@ -115,23 +115,14 @@ def updateAllModelLabels(data, labels, txn):
         current = cursor.getWithKey(key, flags=bsddb3.db.DB_SET | bsddb3.db.DB_RMW)
 
         if current is None:
-            jobTxn = db.getTxn(parent=txn)
-            out = submitPregenJob(problem, data, len(labels.index), txn=jobTxn)
-            if out is None:
-                jobTxn.abort()
-            else:
-                jobTxn.commit()
+            print('dupe here?')
+            submitPregenJob(problem, data, len(labels.index), txn=txn)
             continue
 
         key, modelsums = current
 
         if len(modelsums.index) < 1:
-            jobTxn = db.getTxn(parent=txn)
-            out = submitPregenJob(problem, data, len(labels.index), txn=jobTxn)
-            if out is None:
-                jobTxn.abort()
-            else:
-                jobTxn.commit()
+            submitPregenJob(problem, data, len(labels.index), txn=txn)
             continue
 
         newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem))
@@ -226,8 +217,6 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
         submitSearch(data, problem, bottom, top, regions, txn=txn)
 
         return True
-
-    submitPregenJob(problem, data, regions, txn=txn)
 
     return True
 
