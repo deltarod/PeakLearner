@@ -55,8 +55,7 @@ def getDataPoints():
         logPenalties = np.log10(noError['penalty'].astype(float))
 
         featuresDb = db.Features(*key)
-        featuresTxn = db.getTxn()
-        features = featuresDb.get(txn=featuresTxn, write=True)
+        features = featuresDb.get()
 
         for penalty in logPenalties:
             datapoint = features.copy()
@@ -64,8 +63,6 @@ def getDataPoints():
             datapoint['logPenalty'] = penalty
 
             dataPoints = dataPoints.append(datapoint, ignore_index=True)
-
-        featuresTxn.commit()
 
     # TODO: Save datapoints, update ones which have changed, not all of them every time
 

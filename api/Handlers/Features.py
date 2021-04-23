@@ -34,4 +34,6 @@ def putFeatures(data):
 
     problem = data['problem']
     features = db.Features(data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart'])
-    features.put(pd.Series(data['data'][0]))
+    txn = db.getTxn()
+    features.put(pd.Series(data['data'][0]), txn=txn)
+    txn.commit()

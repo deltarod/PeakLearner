@@ -116,7 +116,7 @@ def updateAllModelLabels(data, labels, txn):
 
         if current is None:
             jobTxn = db.getTxn(parent=txn)
-            out = submitPregenJob(problem, data, txn=jobTxn)
+            out = submitPregenJob(problem, data, len(labels.index), txn=jobTxn)
             if out is None:
                 jobTxn.abort()
             else:
@@ -127,7 +127,7 @@ def updateAllModelLabels(data, labels, txn):
 
         if len(modelsums.index) < 1:
             jobTxn = db.getTxn(parent=txn)
-            out = submitPregenJob(problem, data, txn=jobTxn)
+            out = submitPregenJob(problem, data, len(labels.index), txn=jobTxn)
             if out is None:
                 jobTxn.abort()
             else:
@@ -165,6 +165,8 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
 
     numMinErrors = len(minError.index)
 
+    regions = minError['regions'].max()
+
     if numMinErrors == 0:
         return False
 
@@ -184,7 +186,7 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
         if biggerFp or smallerFn:
             minPenalty = first['penalty']
             maxPenalty = last['penalty']
-            submitGridSearch(problem, data, minPenalty, maxPenalty, txn=txn)
+            submitGridSearch(problem, data, minPenalty, maxPenalty, regions, txn=txn)
             return True
         return False
 
@@ -197,7 +199,7 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
             try:
                 compare = modelSums.iloc[index + 1]
             except IndexError:
-                submitOOMJob(problem, data, model['penalty'], '*', txn=txn)
+                submitOOMJob(problem, data, model['penalty'], '*', regions, txn=txn)
                 return True
 
             # If the next model only has 1 more peak, not worth searching
@@ -208,7 +210,7 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
             try:
                 compare = modelSums.iloc[index - 1]
             except IndexError:
-                submitOOMJob(problem, data, model['penalty'], '/', txn=txn)
+                submitOOMJob(problem, data, model['penalty'], '/', regions, txn=txn)
                 return True
 
             # If the previous model is only 1 peak away, not worth searching
@@ -221,16 +223,16 @@ def checkGenerateModels(modelSums, problem, data, txn=None):
         else:
             top = model
             bottom = compare
-        submitSearch(data, problem, bottom, top, txn=txn)
+        submitSearch(data, problem, bottom, top, regions, txn=txn)
 
         return True
 
-    submitPregenJob(problem, data, txn=txn)
+    submitPregenJob(problem, data, regions, txn=txn)
 
     return True
 
 
-def submitOOMJob(problem, data, penalty, jobType, txn=None):
+def submitOOMJob(problem, data, penalty, jobType, regions, txn=None):
     if jobType == '*':
         penalty = float(penalty) * 10
     elif jobType == '/':
@@ -243,24 +245,26 @@ def submitOOMJob(problem, data, penalty, jobType, txn=None):
                               data['hub'],
                               data['track'],
                               problem,
-                              penalty)
+                              penalty,
+                              regions)
 
     job.putNewJobWithTxn(txn=txn)
 
 
-def submitPregenJob(problem, data, txn=None):
+def submitPregenJob(problem, data, regions, txn=None):
     penalties = getPrePenalties()
 
     job = Jobs.PregenJob(data['user'],
                          data['hub'],
                          data['track'],
                          problem,
-                         penalties)
+                         penalties,
+                         regions)
 
     return job.putNewJobWithTxn(txn=txn)
 
 
-def submitGridSearch(problem, data, minPenalty, maxPenalty, num=pl.gridSearchSize, txn=None):
+def submitGridSearch(problem, data, minPenalty, maxPenalty, regions, num=pl.gridSearchSize, txn=None):
     minPenalty = float(minPenalty)
     maxPenalty = float(maxPenalty)
     penalties = np.linspace(minPenalty, maxPenalty, num + 2).tolist()[1:-1]
@@ -270,18 +274,20 @@ def submitGridSearch(problem, data, minPenalty, maxPenalty, num=pl.gridSearchSiz
                                  data['track'],
                                  problem,
                                  penalties,
+                                 regions,
                                  trackUrl=data['trackUrl'])
     else:
         job = Jobs.GridSearchJob(data['user'],
                                  data['hub'],
                                  data['track'],
                                  problem,
+                                 regions,
                                  penalties)
 
     job.putNewJobWithTxn(txn=txn)
 
 
-def submitSearch(data, problem, bottom, top, txn=None):
+def submitSearch(data, problem, bottom, top, regions, txn=None):
     bottomLoss = db.Loss(data['user'],
                          data['hub'],
                          data['track'],
@@ -305,7 +311,8 @@ def submitSearch(data, problem, bottom, top, txn=None):
                               data['hub'],
                               data['track'],
                               problem,
-                              penalty)
+                              penalty,
+                              regions)
 
     job.putNewJobWithTxn(txn=txn)
 

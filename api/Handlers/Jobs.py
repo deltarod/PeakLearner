@@ -64,11 +64,12 @@ class Job(metaclass=JobType):
 
     jobType = 'job'
 
-    def __init__(self, user, hub, track, problem, trackUrl=None, tasks=None):
+    def __init__(self, user, hub, track, problem, priority, trackUrl=None, tasks=None):
         self.user = user
         self.hub = hub
         self.track = track
         self.problem = problem
+        self.priority = priority
 
         if tasks is None:
             self.tasks = {}
@@ -106,6 +107,7 @@ class Job(metaclass=JobType):
         self.tasks = storable['tasks']
         self.id = storable['id']
         self.iteration = storable['iteration']
+        self.priority = storable['priority']
         return self
 
     def putNewJob(self, checkExists=True):
@@ -222,13 +224,7 @@ class Job(metaclass=JobType):
             self.time = str(sum(times))
 
     def getPriority(self):
-        """Eventually will calculate the priority of the job"""
-
-        # Priority based on number of labels
-        labelsDb = db.Labels(self.user, self.hub, self.track, self.problem['chrom'])
-        inProblem = labelsDb.getInBounds(self.problem['chrom'], self.problem['chromStart'], self.problem['chromEnd'])
-        # Add one so the priority is always above predict jobs
-        return len(inProblem.index) + 1
+        return self.priority
 
     def resetJob(self):
         self.status = 'New'
@@ -260,7 +256,8 @@ class Job(metaclass=JobType):
                   'id': self.id,
                   'iteration': self.iteration,
                   'tasks': self.tasks,
-                  'trackUrl': self.trackUrl}
+                  'trackUrl': self.trackUrl,
+                  'priority': self.priority}
 
         if self.status.lower() == 'done':
             try:
@@ -313,7 +310,7 @@ class PredictJob(Job):
     jobType = 'predict'
 
     def __init__(self, user, hub, track, problem):
-        super().__init__(user, hub, track, problem, tasks={'0': createFeatureTask(0)})
+        super().__init__(user, hub, track, problem, 0, tasks={'0': createFeatureTask(0)})
 
     def updateJobStatus(self):
         keys = self.tasks.keys()
@@ -345,16 +342,12 @@ class PredictJob(Job):
         if '1' in self.tasks:
             del self.tasks['1']
 
-    def getPriority(self):
-        # Predict jobs should be low priority as they should only be ran when no other types of jobs are running
-        return 0
-
 
 class SingleModelJob(Job):
     jobType = 'model'
 
-    def __init__(self, user, hub, track, problem, penalty):
-        super().__init__(user, hub, track, problem)
+    def __init__(self, user, hub, track, problem, penalty, priority):
+        super().__init__(user, hub, track, problem, priority)
         taskId = str(len(self.tasks.keys()))
         log.debug('Single Model Job created', penalty, type(penalty))
         self.tasks[taskId] = createModelTask(taskId, penalty)
@@ -364,13 +357,13 @@ class GridSearchJob(Job):
     """"Job type for performing a gridSearch on a region"""
     jobType = 'gridSearch'
 
-    def __init__(self, user, hub, track, problem, penalties, trackUrl=None, tasks=None):
+    def __init__(self, user, hub, track, problem, penalties, priority, trackUrl=None, tasks=None):
         if tasks is None:
             tasks = {}
         for penalty in penalties:
             taskId = str(len(tasks.keys()))
             tasks[taskId] = createModelTask(taskId, penalty)
-        super().__init__(user, hub, track, problem, trackUrl=trackUrl, tasks=tasks)
+        super().__init__(user, hub, track, problem, priority, trackUrl=trackUrl, tasks=tasks)
 
     def equals(self, jobToCheck):
         if not Job.equals(self, jobToCheck):
@@ -387,13 +380,13 @@ class PregenJob(GridSearchJob):
     """Grid Search but generate a feature vec"""
     jobType = 'pregen'
 
-    def __init__(self, user, hub, track, problem, penalties, trackUrl=None, tasks=None):
+    def __init__(self, user, hub, track, problem, penalties, priority, trackUrl=None, tasks=None):
         if tasks is None:
             tasks = {}
 
         tasks['0'] = createFeatureTask(0)
 
-        super().__init__(user, hub, track, problem, penalties, trackUrl=trackUrl, tasks=tasks)
+        super().__init__(user, hub, track, problem, penalties, priority, trackUrl=trackUrl, tasks=tasks)
 
 
 def updateTask(data):

@@ -251,12 +251,12 @@ def saveLabelGroup(group, user, hub, track, genome, coverageUrl):
 
     doPregen = chromProblems[withLabels]
 
-    submitPregenWithData(doPregen, user, hub, track, coverageUrl)
+    submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl)
 
     txn.commit()
 
 
-def submitPregenWithData(doPregen, user, hub, track, coverageUrl):
+def submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl):
     recs = doPregen.to_dict('records')
     for problem in recs:
         penalties = Models.getPrePenalties()
@@ -265,6 +265,7 @@ def submitPregenWithData(doPregen, user, hub, track, coverageUrl):
                              track['track'],
                              problem,
                              penalties,
+                             numLabels,
                              trackUrl=coverageUrl)
 
         job.putNewJob()

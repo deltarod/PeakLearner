@@ -1,4 +1,3 @@
-import bsddb3.db
 import pandas as pd
 from api.util import PLdb as db
 from api.Handlers import Models, Handler
