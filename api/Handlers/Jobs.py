@@ -105,7 +105,7 @@ class Job(metaclass=JobType):
         self.trackUrl = storable['trackUrl']
         self.status = storable['status']
         self.tasks = storable['tasks']
-        self.id = storable['id']
+        self.id = str(storable['id'])
         self.iteration = storable['iteration']
         self.priority = storable['priority']
         return self
@@ -132,7 +132,7 @@ class Job(metaclass=JobType):
                                       self.problem['chrom'],
                                       self.problem['chromStart']).increment(txn=txn)
 
-        self.putWithDb(db.Job(self.id), txn=txn)
+        db.Job(self.id).put(self.__dict__(), txn=txn)
 
         return self.id
 
@@ -269,10 +269,6 @@ class Job(metaclass=JobType):
 
         return output
 
-    def putWithDb(self, jobDb, txn=None):
-        toStore = self.__dict__()
-
-        jobDb.put(toStore, txn=txn)
 
     def addJobInfoOnTask(self, task):
         task['user'] = self.user
@@ -800,7 +796,6 @@ def stats():
     jobs = []
     for job in db.Job.all():
         numJobs = numJobs + 1
-        job.user = str(job.user)
         jobs.append(job)
         status = job.status.lower()
 

@@ -114,9 +114,7 @@ def updateAlignedLabels(data):
 
 def getLabels(data):
     labels = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
-    txn = db.getTxn()
     labelsDf = labels.getInBounds(data['ref'], data['start'], data['end'])
-    txn.commit()
     if len(labelsDf.index) < 1:
         return []
 

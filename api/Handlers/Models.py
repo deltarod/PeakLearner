@@ -36,8 +36,10 @@ def getModels(data):
     output = []
 
     for problem in problems:
+        txn = db.getTxn()
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
-                                           problem['chromStart']).get()
+                                           problem['chromStart']).get(txn=txn)
+        txn.commit()
 
         if len(modelSummaries.index) < 1:
             lopartOutput = generateLOPARTModel(data, problem)
@@ -107,31 +109,29 @@ def updateAllModelLabels(data, labels, txn):
 
     problems = Tracks.getProblems(data)
 
-    cursor = db.ModelSummaries.getCursor(txn=txn, bulk=True)
-
     for problem in problems:
-        key = (data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart'])
+        modelTxn = db.getTxn(parent=txn)
 
-        current = cursor.getWithKey(key, flags=bsddb3.db.DB_SET | bsddb3.db.DB_RMW)
+        modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
+                                           problem['chromStart'])
 
-        if current is None:
-            print('dupe here?')
-            submitPregenJob(problem, data, len(labels.index), txn=txn)
-            continue
-
-        key, modelsums = current
+        modelsums = modelSummaries.get(txn=txn, write=True)
 
         if len(modelsums.index) < 1:
-            submitPregenJob(problem, data, len(labels.index), txn=txn)
+            out = submitPregenJob(problem, data, len(labels.index), txn=modelTxn)
+            if out is not None:
+                modelTxn.commit()
+            else:
+                modelTxn.abort()
             continue
 
-        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem))
+        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
 
-        cursor.put(key, newSum)
+        modelSummaries.put(newSum, txn=txn)
 
         checkGenerateModels(newSum, problem, data, txn=txn)
 
-    cursor.close()
+        txn.commit()
 
 
 def modelSumLabelUpdate(modelSum, labels, data, problem):

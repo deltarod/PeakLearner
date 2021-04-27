@@ -63,6 +63,7 @@ def labelStats(request):
 def jobsStats(request):
     return Jobs.stats()
 
+
 @view_config(route_name='jobStats', renderer='stats/job.html')
 def jobStats(request):
     id = request.matchdict['id']

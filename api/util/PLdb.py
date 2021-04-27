@@ -31,7 +31,6 @@ def openDBs():
     global loaded
     if db is not None:
         print('opening db')
-        db.createEnvWithDir(dbPath)
         db.open_dbs()
 
 
@@ -41,6 +40,7 @@ def closeDBs():
     if db is not None:
         print('closing db')
         db.close_dbs()
+    db.env.close()
 
 
 try:
@@ -52,6 +52,7 @@ try:
 
     @uwsgidecorators.postfork
     def doOpen():
+        db.createEnvWithDir(dbPath)
         openDBs()
 
 

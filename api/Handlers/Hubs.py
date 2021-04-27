@@ -181,6 +181,7 @@ def storeHubInfo(user, hub, tracks, hubInfo, genome):
                     else:
                         parent['children'].append(track)
 
+    txn = db.getTxn()
     for track in trackList:
         # Determine which track is the coverage data
         coverage = None
@@ -199,21 +200,25 @@ def storeHubInfo(user, hub, tracks, hubInfo, genome):
                                              'key': track['shortLabel'],
                                              'url': coverage['bigDataUrl']}
 
-            checkForPrexistingLabels(coverage['bigDataUrl'], user, hub, track, genome)
+            trackTxn = db.getTxn(parent=txn)
+            if not checkForPrexistingLabels(coverage['bigDataUrl'], user, hub, track, genome, trackTxn):
+                trackTxn.abort()
+                continue
+            trackTxn.commit()
 
-    txn = db.getTxn()
+
     hubInfo['tracks'] = hubInfoTracks
     db.HubInfo(user, hub).put(hubInfo, txn=txn)
     txn.commit()
     return '/%s/' % os.path.join(str(user), hub)
 
 
-def checkForPrexistingLabels(coverageUrl, user, hub, track, genome):
+def checkForPrexistingLabels(coverageUrl, user, hub, track, genome, txn):
     trackUrl = coverageUrl.rsplit('/', 1)[0]
     labelUrl = '%s/labels.bed' % trackUrl
     with requests.get(labelUrl) as r:
         if not r.status_code == 200:
-            return
+            return False
 
         with tempfile.TemporaryFile() as f:
             f.write(r.content)
@@ -222,15 +227,16 @@ def checkForPrexistingLabels(coverageUrl, user, hub, track, genome):
             labels = pd.read_csv(f, sep='\t', header=None)
             labels.columns = Labels.labelColumns
 
-    grouped = labels.groupby('chrom')
-    grouped.apply(saveLabelGroup, user, hub, track, genome, coverageUrl)
+    grouped = labels.groupby(['chrom'], as_index=False)
+    grouped.apply(saveLabelGroup, user, hub, track, genome, coverageUrl, txn)
+
+    return True
 
 
-def saveLabelGroup(group, user, hub, track, genome, coverageUrl):
+def saveLabelGroup(group, user, hub, track, genome, coverageUrl, txn):
     group = group.sort_values('chromStart', ignore_index=True)
 
     group['annotation'] = group.apply(fixNoPeaks, axis=1)
-
     chrom = group['chrom'].loc[0]
 
     txn = db.getTxn()
@@ -251,14 +257,15 @@ def saveLabelGroup(group, user, hub, track, genome, coverageUrl):
 
     doPregen = chromProblems[withLabels]
 
-    submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl)
+    submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl, txn)
 
     txn.commit()
 
 
-def submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl):
+def submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl, txn):
     recs = doPregen.to_dict('records')
     for problem in recs:
+        problemTxn = db.getTxn(parent=txn)
         penalties = Models.getPrePenalties()
         job = Jobs.PregenJob(user,
                              hub,
@@ -268,7 +275,11 @@ def submitPregenWithData(doPregen, user, hub, track, numLabels, coverageUrl):
                              numLabels,
                              trackUrl=coverageUrl)
 
-        job.putNewJob()
+        if job.putNewJobWithTxn(problemTxn) is None:
+            problemTxn.abort()
+            continue
+
+        problemTxn.commit()
 
 
 def checkIfProblemHasLabels(problem, labels):
@@ -282,7 +293,6 @@ def checkIfProblemHasLabels(problem, labels):
 
 
 def fixNoPeaks(row):
-
     if row['annotation'] == 'noPeaks':
         return 'noPeak'
     return row['annotation']
