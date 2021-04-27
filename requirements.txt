@@ -4,6 +4,7 @@ pyramid==1.10.5
 pyramid-jinja2==2.8
 requests==2.23.0
 simpleBDB==1.1.9
+berkeleydb
 waitress
 dozer
 uwsgi

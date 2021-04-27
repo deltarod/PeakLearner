@@ -1,6 +1,6 @@
 import os
 import json
-import bsddb3
+import berkeleydb
 import datetime
 import pandas as pd
 import simpleBDB as db
@@ -55,8 +55,14 @@ try:
         db.createEnvWithDir(dbPath)
         openDBs()
 
+    # run lock detect every second
+    @uwsgidecorators.timer(1)
+    def deadlock_detect(num):
+        db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+
 
 except ModuleNotFoundError:
+    print('Running in non uwsgi mode, deadlocks won\'t be detected automatically')
     openDBs()
     import atexit
     atexit.register(closeDBs)
@@ -152,7 +158,7 @@ class JobCursor(db.Cursor):
     def __init__(self, cursor, parent):
         super().__init__(cursor.cursor, parent)
 
-    def dup(self, flags=bsddb3.db.DB_POSITION):
+    def dup(self, flags=berkeleydb.db.DB_POSITION):
         cursor = db.Cursor.dup(self, flags=flags)
         return JobCursor(cursor, Job)
 
