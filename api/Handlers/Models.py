@@ -315,7 +315,7 @@ def putModel(data):
     track = modelInfo['track']
 
     txn = db.getTxn()
-    labels = db.Labels(user, hub, track, problem['chrom']).get(txn=txn)
+    labels = db.Labels(user, hub, track, problem['chrom']).get(txn=txn, write=True)
     errorSum = calculateModelLabelError(modelData, labels, problem, penalty)
     db.Prediction('changes').increment(txn=txn)
     db.ModelSummaries(user, hub, track, problem['chrom'], problem['chromStart']).add(errorSum, txn=txn)
