@@ -1,5 +1,3 @@
-import bsddb3.db
-
 import PeakError
 import LOPART
 import pandas as pd

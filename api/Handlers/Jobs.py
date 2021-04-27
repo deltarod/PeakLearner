@@ -1,4 +1,4 @@
-import bsddb3
+import berkeleydb
 import logging
 import pandas as pd
 from api.Handlers import Models
@@ -416,7 +416,7 @@ def addDownloadJobs(*args):
 
     cursor = db.HubInfo.getCursor(txn, bulk=True)
 
-    current = cursor.next(flags=bsddb3.db.DB_RMW)
+    current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     while current is not None:
         # If at end of list
@@ -427,7 +427,7 @@ def addDownloadJobs(*args):
         user, hub = key
 
         if 'complete' in hubInfo:
-            current = cursor.next(flags=bsddb3.db.DB_RMW)
+            current = cursor.next(flags=berkeleydb.db.DB_RMW)
             continue
 
         problems = db.Problems(hubInfo['genome']).get()
@@ -447,7 +447,7 @@ def addDownloadJobs(*args):
             currentTrackProblems = currentTrackProblems.append(output, ignore_index=True)
 
         if currentTrackProblems.empty:
-            current = cursor.next(flags=bsddb3.db.DB_RMW)
+            current = cursor.next(flags=berkeleydb.db.DB_RMW)
             continue
 
         # Tilde inverts the bool column
@@ -457,7 +457,7 @@ def addDownloadJobs(*args):
         if len(noModels.index) == 0:
             hubInfo['complete'] = True
             cursor.put(key, hubInfo)
-            current = cursor.next(flags=bsddb3.db.DB_RMW)
+            current = cursor.next(flags=berkeleydb.db.DB_RMW)
             continue
 
         numLabels = currentTrackProblems['numLabels'].sum()
@@ -469,7 +469,7 @@ def addDownloadJobs(*args):
 
         if currentProblems is None:
             currentProblems = hubProblemsInfo
-            current = cursor.next(flags=bsddb3.db.DB_RMW)
+            current = cursor.next(flags=berkeleydb.db.DB_RMW)
             continue
 
         # Run download job on hub with most labels
@@ -477,7 +477,7 @@ def addDownloadJobs(*args):
             if currentProblems['numLabels'] < hubProblemsInfo['numLabels']:
                 currentProblems = hubProblemsInfo
 
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     cursor.close()
 
@@ -562,12 +562,12 @@ def resetAllJobs(data):
     """Resets all jobs"""
     txn = db.getTxn()
     cursor = db.Job.getCursor(txn=txn, bulk=True)
-    current = cursor.next(flags=bsddb3.db.DB_RMW)
+    current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     while current is not None:
         current.resetJob()
         cursor.put(current)
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next(flags=berkeleydb.db.DB_RMW)
     cursor.close()
     txn.commit()
 
@@ -580,7 +580,7 @@ def restartAllJobs(data):
     txn = db.getTxn()
 
     cursor = db.Job.getCursor(txn, bulk=True)
-    current = cursor.next(flags=bsddb3.db.DB_RMW)
+    current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     while current is not None:
         key, job = current
@@ -590,7 +590,7 @@ def restartAllJobs(data):
         if restarted:
             cursor.put(key, job)
 
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     cursor.close()
     txn.commit()
@@ -653,7 +653,7 @@ def getHighestPriorityQueuedJob(cursor):
     lowerStatus = [status.lower() for status in statuses]
     queuedIndex = lowerStatus.index('queued')
 
-    current = cursor.next(flags=bsddb3.db.DB_RMW)
+    current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     while current is not None:
         key, job = current
@@ -679,7 +679,7 @@ def getHighestPriorityQueuedJob(cursor):
                     keyWithTask = key
                     cursorAtBest.close()
                     cursorAtBest = cursor.dup()
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     cursor.close()
     return jobWithTask, keyWithTask, cursorAtBest
@@ -721,7 +721,7 @@ def getJobWithHighestPriority(cursor):
     keyWithTask = None
     cursorAtBest = None
 
-    current = cursor.next(flags=bsddb3.db.DB_RMW)
+    current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     while current is not None:
         key, job = current
@@ -738,7 +738,7 @@ def getJobWithHighestPriority(cursor):
                 cursorAtBest.close()
                 cursorAtBest = cursor.dup()
 
-        current = cursor.next(flags=bsddb3.db.DB_RMW)
+        current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     cursor.close()
     return jobWithTask, keyWithTask, cursorAtBest
