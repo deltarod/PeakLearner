@@ -58,7 +58,8 @@ try:
     # run lock detect every second
     @uwsgidecorators.timer(1)
     def deadlock_detect(num):
-        db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+        if loaded:
+            db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
 
 
 except ModuleNotFoundError:
