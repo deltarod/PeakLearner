@@ -132,9 +132,9 @@ def updateAllModelLabels(data, labels, txn):
         txn.commit()
 
 
-def modelSumLabelUpdate(modelSum, labels, data, problem):
+def modelSumLabelUpdate(modelSum, labels, data, problem, txn):
     model = db.Model(data['user'], data['hub'], data['track'], problem['chrom'],
-                     problem['chromStart'], modelSum['penalty']).get()
+                     problem['chromStart'], modelSum['penalty']).get(txn=txn)
 
     return calculateModelLabelError(model, labels, problem, modelSum['penalty'])
 
