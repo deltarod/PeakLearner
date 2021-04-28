@@ -42,6 +42,32 @@ def closeDBs():
         db.close_dbs()
     db.env.close()
 
+loadLater = False
+try:
+    import uwsgi
+    import uwsgidecorators
+
+    print('trying')
+
+    uwsgi.atexit = closeDBs
+
+    @uwsgidecorators.postfork
+    def doOpen():
+        db.createEnvWithDir(dbPath)
+        openDBs()
+
+    # run lock detect every second
+    @uwsgidecorators.timer(1)
+    def deadlock_detect(num):
+        if loaded:
+            db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+
+
+except ModuleNotFoundError:
+    loadLater = True
+    print('Running in non uwsgi mode, deadlocks won\'t be detected automatically')
+    db.createEnvWithDir(dbPath)
+
 
 def getTxn(parent=None):
     if parent is not None:
@@ -381,29 +407,7 @@ def doRestoreWithSelected(backup):
     return backup
 
 
-try:
-    import uwsgi
-    import uwsgidecorators
-
-    print('trying')
-
-    uwsgi.atexit = closeDBs
-
-    @uwsgidecorators.postfork
-    def doOpen():
-        db.createEnvWithDir(dbPath)
-        openDBs()
-
-    # run lock detect every second
-    @uwsgidecorators.timer(1)
-    def deadlock_detect(num):
-        if loaded:
-            db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
-
-
-except ModuleNotFoundError:
-    print('Running in non uwsgi mode, deadlocks won\'t be detected automatically')
-    db.createEnvWithDir(dbPath)
+if loadLater:
     openDBs()
     import atexit
     atexit.register(closeDBs)
