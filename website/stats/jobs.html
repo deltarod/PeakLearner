@@ -53,6 +53,7 @@
             {# the |string converts job['id'] to a string from an int#}
             <h3>Job: <a href="{{job['id']|string + '/'}}">{{job['id']}}</a></h3>
             <p>Hub Link: <a href="/{{job['user']}}/{{job['hub']}}/">{{job['user'] + '/' + job['hub']}}</a></p>
+            <p>Job Track: {{job['track']}}</p>
             <p>Job Type: {{job['jobType']}}</p>
             <p>Job Priority: {{job['priority']}}</p>
             <p>Job Status: {{job['status']}}</p>

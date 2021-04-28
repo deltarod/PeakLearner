@@ -154,8 +154,6 @@ class Job(metaclass=JobType):
     def equals(self, jobToCheck):
         """Check if current job is equal to the job to check"""
         if self.user != jobToCheck.user:
-            print(self.user, jobToCheck.user)
-            print(type(self.user), type(jobToCheck.user))
             return False
 
         if self.hub != jobToCheck.hub:
@@ -164,7 +162,10 @@ class Job(metaclass=JobType):
         if self.track != jobToCheck.track:
             return False
 
-        if self.problem != jobToCheck.problem:
+        if (self.problem['chrom'] != jobToCheck.problem['chrom']
+                or int(self.problem['chromStart']) != int(jobToCheck.problem['chromStart'])
+                or int(self.problem['chromEnd']) != int(jobToCheck.problem['chromEnd'])):
+
             return False
 
         if self.jobType != jobToCheck.jobType:
@@ -268,7 +269,6 @@ class Job(metaclass=JobType):
                 pass
 
         return output
-
 
     def addJobInfoOnTask(self, task):
         task['user'] = self.user
