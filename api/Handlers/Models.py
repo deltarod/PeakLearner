@@ -113,7 +113,7 @@ def updateAllModelLabels(data, labels, txn):
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
                                            problem['chromStart'])
 
-        modelsums = modelSummaries.get(txn=txn, write=True)
+        modelsums = modelSummaries.get(txn=modelTxn, write=True)
 
         if len(modelsums.index) < 1:
             out = submitPregenJob(problem, data, len(labels.index), txn=modelTxn)
@@ -123,13 +123,13 @@ def updateAllModelLabels(data, labels, txn):
                 modelTxn.abort()
             continue
 
-        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, txn))
+        newSum = modelsums.apply(modelSumLabelUpdate, axis=1, args=(labels, data, problem, modelTxn))
 
-        modelSummaries.put(newSum, txn=txn)
+        modelSummaries.put(newSum, txn=modelTxn)
 
-        checkGenerateModels(newSum, problem, data, txn=txn)
+        checkGenerateModels(newSum, problem, data, txn=modelTxn)
 
-        txn.commit()
+        modelTxn.commit()
 
 
 def modelSumLabelUpdate(modelSum, labels, data, problem, txn):
