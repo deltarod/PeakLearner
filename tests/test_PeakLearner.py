@@ -1,11 +1,39 @@
 import os
-import unittest
 import time
+import pytest
+import shutil
+import unittest
+import threading
 from pyramid import testing
-from api.util import PLConfig as cfg
+from api.util import PLConfig as cfg, PLdb as db
 
 cfg.testing()
 sleepTime = 600
+
+lockDetect = True
+
+
+def checkLocks():
+    while lockDetect:
+        db.deadlock_detect()
+        time.sleep(1)
+
+
+def lock_detect(func):
+    def wrap(*args, **kwargs):
+        global lockDetect
+        thread = threading.Thread(target=checkLocks)
+        thread.start()
+        out = func(*args, **kwargs)
+        lockDetect = False
+        thread.join(timeout=5)
+        return out
+
+    return wrap
+
+
+
+
 
 
 class PeakLearnerTests(unittest.TestCase):
@@ -17,6 +45,7 @@ class PeakLearnerTests(unittest.TestCase):
     trackInfoUrl = '%sinfo/' % trackURL
     labelURL = '%slabels/' % trackURL
     modelsUrl = '%smodels/' % trackURL
+    dbBreak = '/dbbreak/'
     jobsURL = '/jobs/'
     rangeArgs = {'ref': 'chr1', 'start': 0, 'end': 120000000, 'label': 'peakStart'}
     startLabel = rangeArgs.copy()

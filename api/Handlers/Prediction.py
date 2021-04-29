@@ -70,6 +70,8 @@ def getDataPoints():
 
     # TODO: Save datapoints, update ones which have changed, not all of them every time
 
+    if dataPoints.empty:
+        return
     Y = dataPoints['logPenalty']
     X = dataPoints.drop('logPenalty', 1)
 

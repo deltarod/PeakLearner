@@ -1,4 +1,5 @@
 from pyramid.config import Configurator
+from api.util import PLConfig as cfg
 
 
 def main(global_config, **settings):

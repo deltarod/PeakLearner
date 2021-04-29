@@ -18,8 +18,8 @@ class ModelHandler(Handler.TrackHandler):
     """Handles model Commands"""
     key = 'models'
 
-    def do_POST(self, data):
-        return self.getCommands()[data['command']](data['args'])
+    def do_POST(self, data, txn=None):
+        return self.getCommands()[data['command']](data['args'], txn=txn)
 
     @classmethod
     def getCommands(cls):
@@ -28,16 +28,16 @@ class ModelHandler(Handler.TrackHandler):
                 'put': putModel}
 
 
-def getModels(data):
-    problems = Tracks.getProblems(data)
+def getModels(data, txn=None):
+    problems = Tracks.getProblems(data, txn=txn)
 
     output = []
 
     for problem in problems:
-        txn = db.getTxn()
+        problemTxn = db.getTxn(parent=txn)
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
-                                           problem['chromStart']).get(txn=txn)
-        txn.commit()
+                                           problem['chromStart']).get(txn=problemTxn)
+        problemTxn.commit()
 
         if len(modelSummaries.index) < 1:
             lopartOutput = generateLOPARTModel(data, problem)
@@ -268,8 +268,8 @@ def submitGridSearch(problem, data, minPenalty, maxPenalty, regions, num=pl.grid
                                  data['hub'],
                                  data['track'],
                                  problem,
-                                 regions,
-                                 penalties)
+                                 penalties,
+                                 regions)
 
     job.putNewJobWithTxn(txn=txn)
 
@@ -289,6 +289,9 @@ def submitSearch(data, problem, bottom, top, regions, txn=None):
                       problem['chromStart'],
                       top['penalty']).get()
 
+    if topLoss is None or bottomLoss is None:
+        return
+
     penalty = abs((topLoss['meanLoss'] - bottomLoss['meanLoss'])
                   / (bottomLoss['peaks'] - topLoss['peaks'])).iloc[0].astype(float)
 
@@ -304,7 +307,7 @@ def submitSearch(data, problem, bottom, top, regions, txn=None):
     job.putNewJobWithTxn(txn=txn)
 
 
-def putModel(data):
+def putModel(data, txn=None):
     modelData = pd.read_json(data['modelData'])
     modelData.columns = modelColumns
     modelInfo = data['modelInfo']
@@ -314,13 +317,11 @@ def putModel(data):
     hub = modelInfo['hub']
     track = modelInfo['track']
 
-    txn = db.getTxn()
     labels = db.Labels(user, hub, track, problem['chrom']).get(txn=txn, write=True)
     errorSum = calculateModelLabelError(modelData, labels, problem, penalty)
     db.Prediction('changes').increment(txn=txn)
     db.ModelSummaries(user, hub, track, problem['chrom'], problem['chromStart']).add(errorSum, txn=txn)
     db.Model(user, hub, track, problem['chrom'], problem['chromStart'], penalty).put(modelData, txn=txn)
-    txn.commit()
 
     return modelInfo
 
@@ -362,8 +363,7 @@ def calculateModelLabelError(modelDf, labels, problem, penalty):
     return singleRow
 
 
-def getModelSummary(data):
-    txn = db.getTxn()
+def getModelSummary(data, txn=None):
     problems = Tracks.getProblems(data, txn=txn)
 
     output = {}
@@ -380,7 +380,6 @@ def getModelSummary(data):
             continue
 
         output[problem['chromStart']] = modelSummaries.to_dict('records')
-    txn.commit()
     return output
 
 

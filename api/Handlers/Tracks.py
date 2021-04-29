@@ -10,12 +10,12 @@ class TrackInfoHandler(Handler.TrackHandler):
     """Handles Label Commands"""
     key = 'info'
 
-    def do_GET(self, data):
-        return getTrackInfo(data['args'])
+    def do_GET(self, data, txn=None):
+        return getTrackInfo(data['args'], txn=txn)
 
-    def do_POST(self, data):
+    def do_POST(self, data, txn=None):
         try:
-            return self.getCommands()[data['command']](data['args'])
+            return self.getCommands()[data['command']](data['args'], txn=txn)
         except KeyError:
             print(data['command'], 'not yet implemented\n', data)
 
@@ -64,9 +64,7 @@ def getGenome(data, txn=None):
     return hubInfo['genome']
 
 
-def getTrackInfo(data):
-    txn = db.getTxn()
+def getTrackInfo(data, txn=None):
     hubInfo = db.HubInfo(data['user'], data['hub']).get(txn=txn)
-    txn.commit()
 
     return hubInfo['tracks'][data['track']]

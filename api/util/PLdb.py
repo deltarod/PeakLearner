@@ -6,6 +6,7 @@ import pandas as pd
 import simpleBDB as db
 from api.Handlers import Jobs
 import api.util.PLConfig as cfg
+from simpleBDB import AbortTXNException
 
 dbPath = os.path.join(cfg.jbrowsePath, cfg.dataPath, 'db')
 
@@ -32,6 +33,7 @@ def openDBs():
     if db is not None:
         print('opening db')
         db.open_dbs()
+        loaded = True
 
 
 def closeDBs():
@@ -41,6 +43,12 @@ def closeDBs():
         print('closing db')
         db.close_dbs()
     db.env.close()
+
+
+def deadlock_detect():
+    if loaded:
+        db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+
 
 loadLater = False
 try:
@@ -55,12 +63,12 @@ try:
     def doOpen():
         db.createEnvWithDir(dbPath)
         openDBs()
+        loaded = True
 
     # run lock detect every second
     @uwsgidecorators.timer(1)
-    def deadlock_detect(num):
-        if loaded:
-            db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+    def start_lock_detect(num):
+        deadlock_detect()
 
 
 except ModuleNotFoundError:

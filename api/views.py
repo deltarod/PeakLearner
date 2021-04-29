@@ -1,6 +1,7 @@
+from api.util import PLdb as db, PLConfig as cfg
 from pyramid.view import view_config
 from api.Handlers import Jobs, Hubs
-from api.util import PLdb as db
+
 from api import CommandHandler
 import json
 

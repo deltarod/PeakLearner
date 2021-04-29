@@ -5,6 +5,7 @@ import pandas as pd
 import requests
 
 server = 'http://localhost:8080'
+breakDb = '%s/breakDb/' % server
 user = 1
 hub = 'TestHub'
 track = 'aorta_ENCFF115HTK'
@@ -17,9 +18,6 @@ jobsURL = '%s/jobs/' % server
 problem = {'chrom': 'chr1', 'chromStart': 13607162, 'chromEnd': 17125658}
 
 syncro = threading.Event()
-
-
-
 
 
 # Add a number of labels

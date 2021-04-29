@@ -13,13 +13,13 @@ statuses = ['New', 'Queued', 'Processing', 'Done', 'Error']
 class JobHandler(Handler):
     """Handles Job Commands"""
 
-    def do_POST(self, data):
+    def do_POST(self, data, txn=None):
         funcToRun = self.getCommands()[data['command']]
         args = {}
         if 'args' in data:
             args = data['args']
 
-        return funcToRun(args)
+        return funcToRun(args, txn=None)
 
     @classmethod
     def getCommands(cls):
@@ -387,16 +387,15 @@ class PregenJob(GridSearchJob):
         super().__init__(user, hub, track, problem, penalties, priority, trackUrl=trackUrl, tasks=tasks)
 
 
-def updateTask(data):
+def updateTask(data, txn=None):
     """Updates a task given the job/task id and stuff to update it with"""
     jobId = data['id']
     task = data['task']
-    txn = db.getTxn()
+
     jobDb = db.Job(jobId)
     jobToUpdate = jobDb.get(txn=txn, write=True)
     task = jobToUpdate.updateTask(task)
     jobDb.put(jobToUpdate, txn=txn)
-    txn.commit()
 
     task = jobToUpdate.addJobInfoOnTask(task)
 
@@ -408,11 +407,9 @@ def updateTask(data):
     return task
 
 
-def addDownloadJobs(*args):
+def addDownloadJobs(*args, txn=None):
     # Check tracks for where a prediction needs to be made
     currentProblems = None
-
-    txn = db.getTxn()
 
     cursor = db.HubInfo.getCursor(txn, bulk=True)
 
@@ -481,21 +478,19 @@ def addDownloadJobs(*args):
 
     cursor.close()
 
-    txn.commit()
-
     if currentProblems is not None:
-        submitDownloadJobs(currentProblems)
+        submitDownloadJobs(currentProblems, txn=txn)
 
 
-def submitDownloadJobs(problems):
+def submitDownloadJobs(problems, txn=None):
     currentProblems = problems['problems']
 
     toCreateJobs = currentProblems[~currentProblems['models']]
 
-    toCreateJobs.apply(submitPredictJobForDownload, axis=1, args=(problems['user'], problems['hub']))
+    toCreateJobs.apply(submitPredictJobForDownload, axis=1, args=(problems['user'], problems['hub'], txn))
 
 
-def submitPredictJobForDownload(row, user, hub):
+def submitPredictJobForDownload(row, user, hub, txn):
     problem = {'chrom': row['chrom'],
                'chromStart': row['chromStart'],
                'chromEnd': row['chromEnd']}
@@ -504,7 +499,7 @@ def submitPredictJobForDownload(row, user, hub):
 
     job = PredictJob(user, hub, track, problem)
 
-    job.putNewJob()
+    job.putNewJobWithTxn(txn)
 
 
 def checkForModels(row, user, hub, track):
@@ -546,21 +541,18 @@ def checkIfRunDownloadJobs():
     return True
 
 
-def resetJob(data):
+def resetJob(data, txn=None):
     """resets a job to a new state"""
     jobId = data['jobId']
-    txn = db.getTxn()
     jobDb = db.Job(jobId)
     jobToReset = jobDb.get(txn=txn, write=True)
     jobToReset.resetJob()
     jobDb.put(jobToReset, txn=txn)
-    txn.commit()
     return jobToReset.__dict__()
 
 
-def resetAllJobs(data):
+def resetAllJobs(data, txn=None):
     """Resets all jobs"""
-    txn = db.getTxn()
     cursor = db.Job.getCursor(txn=txn, bulk=True)
     current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
@@ -569,15 +561,13 @@ def resetAllJobs(data):
         cursor.put(current)
         current = cursor.next(flags=berkeleydb.db.DB_RMW)
     cursor.close()
-    txn.commit()
 
 
-def restartJob(data):
+def restartJob(data, txn=None):
     print(data)
 
 
-def restartAllJobs(data):
-    txn = db.getTxn()
+def restartAllJobs(data, txn=None):
 
     cursor = db.Job.getCursor(txn, bulk=True)
     current = cursor.next(flags=berkeleydb.db.DB_RMW)
@@ -593,19 +583,16 @@ def restartAllJobs(data):
         current = cursor.next(flags=berkeleydb.db.DB_RMW)
 
     cursor.close()
-    txn.commit()
 
 
-def getJob(data):
+def getJob(data, txn=None):
     """Gets job by ID"""
-    output = db.Job(data['id']).get().__dict__()
+    output = db.Job(data['id']).get(txn=txn).__dict__()
     return output
 
 
 # TODO: Figure out how to make the next 4 functions more reusable
-def processNextQueuedTask(data):
-    txn = db.getTxn()
-
+def processNextQueuedTask(data, txn=None):
     db.Job.syncDb()
 
     cursor = db.Job.getCursor(txn=txn, bulk=True)
@@ -615,7 +602,6 @@ def processNextQueuedTask(data):
 
     if job is None:
         cursor.close()
-        txn.commit()
         return {'Error': 'ProcessNextQueuedTask'}
 
     taskToProcess = None
@@ -628,7 +614,6 @@ def processNextQueuedTask(data):
             break
 
     if taskToProcess is None:
-        txn.commit()
         return
 
     taskToProcess['status'] = 'Processing'
@@ -638,8 +623,6 @@ def processNextQueuedTask(data):
     cursorAtBest.put(key, job)
 
     cursorAtBest.close()
-
-    txn.commit()
 
     task = job.addJobInfoOnTask(taskToProcess)
     return task
@@ -685,9 +668,7 @@ def getHighestPriorityQueuedJob(cursor):
     return jobWithTask, keyWithTask, cursorAtBest
 
 
-def queueNextTask(data):
-    txn = db.getTxn()
-
+def queueNextTask(data, txn=None):
     db.Job.syncDb()
 
     cursor = db.Job.getCursor(txn=txn, bulk=True)
@@ -708,8 +689,6 @@ def queueNextTask(data):
     cursorAtBest.put(key, job)
 
     cursorAtBest.close()
-
-    txn.commit()
 
     task = job.addJobInfoOnTask(taskToUpdate)
 
@@ -755,9 +734,8 @@ def getNextTaskInJob(job):
     return None
 
 
-def checkNewTask(data):
+def checkNewTask(data, txn=None):
     """Checks through all the jobs to see if any of them are new"""
-    txn = db.getTxn()
     cursor = db.Job.getCursor(txn=txn, bulk=True)
     out = False
 
@@ -771,15 +749,14 @@ def checkNewTask(data):
         current = cursor.next()
 
     cursor.close()
-    txn.commit()
     return out
 
 
-def getAllJobs(data):
+def getAllJobs(data, txn=None):
     jobs = []
 
     for key in db.Job.db_key_tuples():
-        value = db.Job(*key).get()
+        value = db.Job(*key).get(txn=txn)
         if value is None:
             continue
 

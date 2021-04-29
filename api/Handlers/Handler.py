@@ -1,4 +1,5 @@
 from api.util import PLdb as db
+from simpleBDB import retry, txnAbortOnError
 
 # https://realpython.com/python-interface/#using-metaclasses
 class HandlerMeta(type):
@@ -38,11 +39,15 @@ class Handler(metaclass=HandlerMeta):
     def __init__(self, query):
         self.query = query
 
-    def runCommand(self, method, data, *args):
+    # First decorator will retry the whole operation if the issue is a deadlock
+    # The second decorator provides a txn that will be aborted upon exception, then the exception will be reraised
+    @retry
+    @txnAbortOnError
+    def runCommand(self, method, data, *args, txn=None):
         command = self.methodCommands()[method]
 
         if callable(command):
-            return command(self, data, *args)
+            return command(self, data, *args, txn=txn)
         else:
             print(command, 'not yet implemented')
             return {}
@@ -55,19 +60,19 @@ class Handler(metaclass=HandlerMeta):
                 'DELETE': cls.do_DELETE}
 
     # Override these
-    def do_PUT(self, data):
+    def do_PUT(self, data, txn=None):
         print('do_PUT Not Yet Implemented for class', self.name)
         pass
 
-    def do_GET(self, data):
+    def do_GET(self, data, txn=None):
         print('do_GET Not Yet Implemented for class', self.name)
         pass
 
-    def do_POST(self, data):
+    def do_POST(self, data, txn=None):
         print('do_POST Not Yet Implemented for class', self.name)
         pass
 
-    def do_DELETE(self, data):
+    def do_DELETE(self, data, txn=None):
         print('do_DELETE Not Yet Implemented for class', self.name)
         pass
 

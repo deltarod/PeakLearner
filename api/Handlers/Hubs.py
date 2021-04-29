@@ -12,31 +12,31 @@ from api.Handlers import Labels, Tracks, Models, Jobs
 
 class HubHandler(Handler):
     """Handles Hub Commands"""
-    def do_GET(self, data):
+    def do_GET(self, data, txn=None):
         args = data['args']
         if args['file'] == 'trackList.json':
 
-            hubInfo = db.HubInfo(self.query['user'], self.query['hub']).get()
+            hubInfo = db.HubInfo(self.query['user'], self.query['hub']).get(txn=txn)
 
             return createTrackListWithHubInfo(hubInfo)
         else:
             print('no handler for %s' % self.query['handler'])
 
-    def do_POST(self, data):
-        return self.getCommands()[data['command']](data['args'], self.query)
+    def do_POST(self, data, txn=None):
+        return self.getCommands()[data['command']](data['args'], self.query, txn=txn)
 
     @classmethod
     def getCommands(cls):
         return {'goTo': goToRegion}
 
 
-def goToRegion(data, query):
+def goToRegion(data, query, txn=None):
     user = query['user']
     hub = query['hub']
 
-    hubInfo = db.HubInfo(user, hub).get()
+    hubInfo = db.HubInfo(user, hub).get(txn=txn)
     genome = hubInfo['genome']
-    problems = db.Problems(genome).get()
+    problems = db.Problems(genome).get(txn=txn)
     tracks = list(hubInfo['tracks'].keys())
     toGoTo = problems.apply(checkProblem, axis=1, args=(user, hub, tracks, data['type'].lower()))
 
