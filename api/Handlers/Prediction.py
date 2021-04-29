@@ -1,8 +1,8 @@
-
 import scipy
 import numpy as np
 import pandas as pd
 from glmnet_python import cvglmnet
+from simpleBDB import retry, txnAbortOnError
 from api.util import PLConfig as cfg, PLdb as db
 
 try:
@@ -21,18 +21,19 @@ except ModuleNotFoundError:
 
 
 # Checks that there are enough changes and labeled regions to begin learning
-def check():
-    txn = db.getTxn()
+@retry
+@txnAbortOnError
+def check(txn=None):
     changes = db.Prediction('changes').get(txn=txn, write=True)
     if changes > cfg.numChanges:
         db.Prediction('changes').put(0, txn=txn)
-        txn.commit()
         return True
-    txn.abort()
     return False
 
 
-def getDataPoints():
+@retry
+@txnAbortOnError
+def getDataPoints(txn=None):
     if not check():
         return
 
@@ -41,14 +42,14 @@ def getDataPoints():
     dataPoints = pd.DataFrame()
 
     for key in db.ModelSummaries.db_key_tuples():
-        txn = db.getTxn()
-        modelSum = db.ModelSummaries(*key).get(txn=txn)
+        modelTxn = db.getTxn(parent=txn)
+        modelSum = db.ModelSummaries(*key).get(txn=modelTxn)
         if modelSum.empty:
-            txn.abort()
+            modelTxn.abort()
             continue
 
         if modelSum['regions'].max() < 1:
-            txn.abort()
+            modelTxn.abort()
             continue
 
         withPeaks = modelSum[modelSum['numPeaks'] > 0]
@@ -66,7 +67,7 @@ def getDataPoints():
             datapoint['logPenalty'] = penalty
 
             dataPoints = dataPoints.append(datapoint, ignore_index=True)
-        txn.commit()
+        modelTxn.commit()
 
     # TODO: Save datapoints, update ones which have changed, not all of them every time
 
@@ -95,13 +96,14 @@ def dropBadCols(df):
     return output
 
 
-def learn(X, Y):
+@retry
+@txnAbortOnError
+def learn(X, Y, txn=None):
     X = X.to_numpy(dtype=np.float64, copy=True)
     Y = Y.to_numpy(dtype=np.float64, copy=True)
     cvfit = cvglmnet(x=X, y=Y)
-    txn = db.getTxn()
     db.Prediction('model').put(cvfit, txn=txn)
-    txn.commit()
+
 
 
 # Taken from the glmnet_python library, added a return to it so it can be saved
