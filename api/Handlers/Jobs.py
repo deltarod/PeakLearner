@@ -19,7 +19,7 @@ class JobHandler(Handler):
         if 'args' in data:
             args = data['args']
 
-        return funcToRun(args, txn=None)
+        return funcToRun(args, txn=txn)
 
     @classmethod
     def getCommands(cls):
