@@ -84,9 +84,9 @@ def getModels(data, txn=None):
     return output
 
 
-def whichModelToDisplay(data, problem, summary, txn):
+def whichModelToDisplay(data, problem, summary):
     try:
-        prediction = doPrediction(data, problem, txn)
+        prediction = doPrediction(data, problem)
 
         # If no prediction, use traditional system
         if prediction is None or prediction is False:
@@ -105,7 +105,6 @@ def whichModelToDisplay(data, problem, summary, txn):
         # This could be better and I could work out the errors more,
         # or I can just use the old reliable method whenever it fails and move on with my life.
         return noPredictGuess(summary)
-
 
 
 def noPredictGuess(summary):
@@ -555,24 +554,23 @@ def convertLabelsToLopart(row, modelStart, modelEnd, denom, bins):
     return output
 
 
-@txnAbortOnError
-def doPrediction(data, problem, txn=None):
+def doPrediction(data, problem):
     features = db.Features(data['user'],
                            data['hub'],
                            data['track'],
                            problem['chrom'],
-                           problem['chromStart']).get(txn=txn)
+                           problem['chromStart']).get()
 
     if not isinstance(features, pd.Series):
         if not features:
             return False
 
-    model = db.Prediction('model').get(txn=txn)
+    model = db.Prediction('model').get()
 
     if not isinstance(model, dict):
         return False
 
-    colsToDrop = db.Prediction('badCols').get(txn=txn)
+    colsToDrop = db.Prediction('badCols').get()
 
     featuresDropped = features.drop(labels=colsToDrop)
 
