@@ -87,24 +87,25 @@ def getModels(data, txn=None):
 def whichModelToDisplay(data, problem, summary, txn):
     try:
         prediction = doPrediction(data, problem, txn)
+
+        # If no prediction, use traditional system
+        if prediction is None or prediction is False:
+            prediction = noPredictGuess(summary)
+
+        logPenalties = np.log10(summary['penalty'].astype(float))
+
+        compared = abs(prediction - logPenalties)
+
+        toDisplay = compared[compared == compared.min()]
+
+        toDisplayIndex = toDisplay.index[0]
+
+        return pd.DataFrame([summary.iloc[toDisplayIndex]])
     except:
-        prediction = noPredictGuess(summary)
+        # This could be better and I could work out the errors more,
+        # or I can just use the old reliable method whenever it fails and move on with my life.
+        return noPredictGuess(summary)
 
-    # If no prediction, use traditional system
-    if prediction is None or prediction is False:
-        prediction = noPredictGuess(summary)
-
-    logPenalties = np.log10(summary['penalty'].astype(float))
-
-    compared = abs(prediction - logPenalties)
-
-    toDisplay = compared[compared == compared.min()]
-
-    toDisplayIndex = toDisplay.index[0]
-
-    outputDf = pd.DataFrame([summary.iloc[toDisplayIndex]])
-
-    return outputDf
 
 
 def noPredictGuess(summary):
