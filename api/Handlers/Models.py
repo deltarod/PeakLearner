@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import logging
 log = logging.getLogger(__name__)
+from simpleBDB import txnAbortOnError
 from glmnet_python import cvglmnetPredict
 from api.util import PLConfig as pl, PLdb as db, bigWigUtil as bw
 from api.Handlers import Jobs, Tracks, Handler
@@ -37,7 +38,7 @@ def getModels(data, txn=None):
         problemTxn = db.getTxn(parent=txn)
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
                                            problem['chromStart']).get(txn=problemTxn)
-        problemTxn.commit()
+
 
         if len(modelSummaries.index) < 1:
             lopartOutput = generateLOPARTModel(data, problem)
@@ -67,13 +68,14 @@ def getModels(data, txn=None):
 
         elif len(noError.index) > 1:
             # Select which model to display from modelSums with 0 error
-            noError = whichModelToDisplay(data, problem, noError)
+            noError = whichModelToDisplay(data, problem, noError, txn)
 
         penalty = noError['penalty'].iloc[0]
 
         minErrorModel = db.Model(data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart'],
                                  penalty)
-        model = minErrorModel.getInBounds(data['ref'], data['start'], data['end'])
+        model = minErrorModel.getInBounds(data['ref'], data['start'], data['end'], txn=txn)
+        problemTxn.commit()
         onlyPeaks = model[model['annotation'] == 'peak']
         # Organize the columns
         onlyPeaks = onlyPeaks[modelColumns]
@@ -82,12 +84,15 @@ def getModels(data, txn=None):
     return output
 
 
-def whichModelToDisplay(data, problem, summary):
-    prediction = doPrediction(data, problem)
+def whichModelToDisplay(data, problem, summary, txn):
+    try:
+        prediction = doPrediction(data, problem, txn)
+    except:
+        prediction = noPredictGuess(summary)
 
     # If no prediction, use traditional system
     if prediction is None or prediction is False:
-        return summary[summary['numPeaks'] == summary['numPeaks'].min()]
+        prediction = noPredictGuess(summary)
 
     logPenalties = np.log10(summary['penalty'].astype(float))
 
@@ -100,6 +105,10 @@ def whichModelToDisplay(data, problem, summary):
     outputDf = pd.DataFrame([summary.iloc[toDisplayIndex]])
 
     return outputDf
+
+
+def noPredictGuess(summary):
+    return summary[summary['numPeaks'] == summary['numPeaks'].min()]
 
 
 def updateAllModelLabels(data, labels, txn):
@@ -545,19 +554,24 @@ def convertLabelsToLopart(row, modelStart, modelEnd, denom, bins):
     return output
 
 
-def doPrediction(data, problem):
-    features = db.Features(data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart']).get()
+@txnAbortOnError
+def doPrediction(data, problem, txn=None):
+    features = db.Features(data['user'],
+                           data['hub'],
+                           data['track'],
+                           problem['chrom'],
+                           problem['chromStart']).get(txn=txn)
 
     if not isinstance(features, pd.Series):
         if not features:
             return False
 
-    model = db.Prediction('model').get()
+    model = db.Prediction('model').get(txn=txn)
 
     if not isinstance(model, dict):
         return False
 
-    colsToDrop = db.Prediction('badCols').get()
+    colsToDrop = db.Prediction('badCols').get(txn=txn)
 
     featuresDropped = features.drop(labels=colsToDrop)
 

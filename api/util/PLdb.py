@@ -86,8 +86,8 @@ def getTxn(parent=None):
 class Model(db.PandasDf):
     keys = ("user", "hub", "track", "chrom", "problemstart", "penalty")
 
-    def getInBounds(self, chrom, start, end):
-        model = self.get()
+    def getInBounds(self, chrom, start, end, txn=None):
+        model = self.get(txn=txn)
         isInBounds = model.apply(checkInBounds, axis=1, args=(chrom, start, end))
 
         return model[isInBounds]
