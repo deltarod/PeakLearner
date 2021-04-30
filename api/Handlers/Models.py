@@ -39,6 +39,8 @@ def getModels(data, txn=None):
         modelSummaries = db.ModelSummaries(data['user'], data['hub'], data['track'], problem['chrom'],
                                            problem['chromStart']).get(txn=problemTxn)
 
+        problemTxn.commit()
+
 
         if len(modelSummaries.index) < 1:
             lopartOutput = generateLOPARTModel(data, problem)
@@ -74,8 +76,7 @@ def getModels(data, txn=None):
 
         minErrorModel = db.Model(data['user'], data['hub'], data['track'], problem['chrom'], problem['chromStart'],
                                  penalty)
-        model = minErrorModel.getInBounds(data['ref'], data['start'], data['end'], txn=txn)
-        problemTxn.commit()
+        model = minErrorModel.getInBounds(data['ref'], data['start'], data['end'])
         onlyPeaks = model[model['annotation'] == 'peak']
         # Organize the columns
         onlyPeaks = onlyPeaks[modelColumns]
