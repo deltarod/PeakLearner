@@ -68,7 +68,7 @@ def getModels(data, txn=None):
 
         elif len(noError.index) > 1:
             # Select which model to display from modelSums with 0 error
-            noError = whichModelToDisplay(data, problem, noError, txn)
+            noError = whichModelToDisplay(data, problem, noError)
 
         penalty = noError['penalty'].iloc[0]
 
