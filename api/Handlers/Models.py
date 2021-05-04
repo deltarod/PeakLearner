@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import logging
 log = logging.getLogger(__name__)
-from simpleBDB import txnAbortOnError
 from glmnet_python import cvglmnetPredict
 from api.util import PLConfig as pl, PLdb as db, bigWigUtil as bw
 from api.Handlers import Jobs, Tracks, Handler
@@ -40,7 +39,6 @@ def getModels(data, txn=None):
                                            problem['chromStart']).get(txn=problemTxn)
 
         problemTxn.commit()
-
 
         if len(modelSummaries.index) < 1:
             lopartOutput = generateLOPARTModel(data, problem)

@@ -10,6 +10,7 @@ requires = [
     'pybbi',
     'scipy',
     'uwsgi',
+    'werkzeug',
 ]
 
 # List of dependencies installed via `pip install -e ".[dev]"`

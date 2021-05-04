@@ -9,7 +9,7 @@ try:
     import uwsgi
     import uwsgidecorators
 
-    @uwsgidecorators.timer(cfg.timeBetween)
+    # @uwsgidecorators.timer(cfg.timeBetween)
     def doLearning(num):
         print('prediction system running')
         if db.isLoaded():
