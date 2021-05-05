@@ -66,7 +66,7 @@ try:
         loaded = True
 
     # run lock detect every second
-    @uwsgidecorators.timer(1)
+    @uwsgidecorators.timer(1, target='mule')
     def start_lock_detect(num):
         deadlock_detect()
 
