@@ -9,6 +9,7 @@ berkeleydb
 waitress
 dozer
 uwsgi
+uwsgitop
 numpy
 scipy
 scikit-learn
