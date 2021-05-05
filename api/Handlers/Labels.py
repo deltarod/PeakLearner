@@ -1,7 +1,7 @@
 import pandas as pd
 from api.util import PLdb as db
 from api.Handlers import Models, Handler
-from berkeleydb.dbutils import DeadlockWrap
+import berkeleydb
 
 labelColumns = ['chrom', 'chromStart', 'chromEnd', 'annotation']
 jbrowseLabelColumns = ['ref', 'start', 'end', 'label']
@@ -108,7 +108,7 @@ def updateAlignedLabels(data, txn=None):
 
 def getLabels(data, txn=None):
     labels = db.Labels(data['user'], data['hub'], data['track'], data['ref'])
-    labelsDf = DeadlockWrap(labels.getInBounds, data['ref'], data['start'], data['end'], txn=txn)
+    labelsDf = labels.getInBounds(data['ref'], data['start'], data['end'], txn=txn)
     if len(labelsDf.index) < 1:
         return []
 

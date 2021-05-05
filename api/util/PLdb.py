@@ -47,7 +47,7 @@ def closeDBs():
 
 def deadlock_detect():
     if loaded:
-        db.env.lock_detect(berkeleydb.db.DB_LOCK_DEFAULT)
+        db.env.lock_detect(berkeleydb.db.DB_LOCK_OLDEST)
 
 
 loadLater = False
