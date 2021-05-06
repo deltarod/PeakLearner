@@ -38,5 +38,10 @@ RUN python3 -m pip install -U pip && \
 FROM pythonSetup AS build
 COPY . .
 RUN python3 -m pip install -e .
-#CMD ["pserve", "production.ini"]
+
+FROM build AS profile
+RUN mkdir testProfile/
+CMD ["uwsgi", "profile.ini"]
+
+FROM build AS run
 CMD ["uwsgi", "wsgi.ini"]
